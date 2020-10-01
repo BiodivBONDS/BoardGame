@@ -1,6 +1,3 @@
-# BoardGame
-The host code for the computer simulated component of the board game on fishery practice in the Varzea de Curuai
-
 <!-- PROJECT SHIELDS -->
 <!--
 *** I'm using markdown "reference style" links for readability.
@@ -55,13 +52,15 @@ The host code for the computer simulated component of the board game on fishery 
 
 
 <!-- ABOUT THE PROJECT -->
-## About The Project
+# About The BONDS Board Game
+
+The host code for the computer simulated component of the board game on fishery practice in the Varzea de Curuai
 
 Models from the BONDS project focus on biodiversity conservation from various point of view - see more [here](https://github.com/BiodivBONDS/)
 
 [BONDS Board Game](https://github.com/BiodivBONDS/BoardGame) illustrate the use of board game coupled with agent based models to enhance and support decision making in Amazone wetlands fisheries 
 
-### Built With
+## Built With
 
 * [GAMA-Platform](http://gama-platform.org)
 
