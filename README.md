@@ -14,7 +14,7 @@ The host code for the computer simulated component of the board game on fishery 
 
 <br />
 <p align="center">
-  HERE SHOULD GO THE LOGO
+  HERE SHOULD GO THE LOGO OF THE GAME
   <!--
   <a href="https://github.com/COMOKIT/COMOKIT-Model">
     <img src="https://avatars0.githubusercontent.com/u/63448362" alt="Logo" width="250" height="250">
@@ -57,9 +57,9 @@ The host code for the computer simulated component of the board game on fishery 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Models from the BONDS project focus on biodiversity conservation from various point of view: 
-* [BONDS Board Game](https://github.com/BiodivBONDS/BoardGame) illustrate the use of board game coupled with agent based models to enhance and support decision making in Amazone wetlands fisheries 
-* Others ???
+Models from the BONDS project focus on biodiversity conservation from various point of view - see more [here](https://github.com/BiodivBONDS/)
+
+[BONDS Board Game](https://github.com/BiodivBONDS/BoardGame) illustrate the use of board game coupled with agent based models to enhance and support decision making in Amazone wetlands fisheries 
 
 ### Built With
 
