@@ -8,6 +8,8 @@
 
 model Bonds
 
+import "Utilities/UIBox.gaml"
+
 global {
 
 	int nb_comunidades <- 3;
@@ -16,13 +18,23 @@ global {
 	
 	init {
 		
-		create comunidade number:nb_comunidades;
-		create pescador number:nb_pescadores with:[comu::any(comunidade)];
+		do create_comunidades;
+		
 		create lago number:nb_lagos;
 		create rio;
 	
 		do tabuleiro;
+		do block_setup;
 		
+	}
+	
+	action create_comunidades {
+		create comunidade number:nb_comunidades;
+		ask comunidade {
+			create pescador number:rnd(1,nb_pescadores-length(pescador)) 
+				with:[comu::self] returns:pescs;
+			pescadores <- pescs;
+		}
 	}
 	
 	action tabuleiro {
@@ -116,6 +128,29 @@ global {
 				with:[estoque::self.estoque/2/nb_lugares, lugares::[self]];
 			lugares <<+ ldp;
 		}
+		ask comunidade {
+			accesibilidade <+ lago accumulate (each.lugares) closest_to self;
+		}
+	}
+
+	action block_setup {
+		list<geometry> splited_env <- shape to_rectangles (2,1);
+		
+		list<geometry> com_env <- first(splited_env) to_squares (length(comunidade),false);
+		ask comunidade {
+			create RegularBox with:[name::self.name,shape::com_env[int(self)],_size::5#m,_atomic_aspect::"none"];
+			RegularBox com_box <- last(RegularBox);
+			ask pescadores { ask com_box {do insert_empty(myself); } }
+		}
+		list<geometry> lagos_env <- last(splited_env) to_squares (length(lago)+1,false);
+		create GridBox with:[name::first(rio).name,shape::first(lagos_env),_x::1,_y::1,color::#darkblue];
+		ask lago {
+			create GridBox with:[name::self.name,shape::lagos_env[int(self)+1]
+				,_x::length(lugares),_y::1,color::#blue
+			];
+			GridBox lago_box <- last(GridBox);
+			ask lugares { ask lago_box {do insert_empty(myself); } }
+		}
 	}
 	
 }
@@ -173,6 +208,10 @@ species pescador {
 	comunidade comu;
 	lugar_de_pesca lp;
 	
+	aspect default {
+		draw circle(1) color:#black;
+	}
+	
 } 
 
 species comunidade {
@@ -184,4 +223,12 @@ species comunidade {
 // SIMULACAO //
 ///////////////
 
-experiment xp {}
+experiment xp_test {
+	output {
+		display boxes {
+			species GridBox;
+			species RegularBox;
+			species pescador;
+		}
+	}
+}
