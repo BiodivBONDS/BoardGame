@@ -138,16 +138,14 @@ global {
 		
 		list<geometry> com_env <- first(splited_env) to_squares (length(comunidade),false);
 		ask comunidade {
-			create RegularBox with:[name::self.name,shape::com_env[int(self)],_size::5#m,_atomic_aspect::"none"];
+			create RegularBox with:[name::self.name,shape::com_env[int(self)],_size::5#m];
 			RegularBox com_box <- last(RegularBox);
 			ask pescadores { ask com_box {do insert_empty(myself); } }
 		}
 		list<geometry> lagos_env <- last(splited_env) to_squares (length(lago)+1,false);
 		create GridBox with:[name::first(rio).name,shape::first(lagos_env),_x::1,_y::1,color::#darkblue];
 		ask lago {
-			create GridBox with:[name::self.name,shape::lagos_env[int(self)+1]
-				,_x::length(lugares),_y::1,color::#blue
-			];
+			create GridBox with:[name::self.name,shape::lagos_env[int(self)+1],_x::length(lugares),_y::1,color::#blue];
 			GridBox lago_box <- last(GridBox);
 			ask lugares { ask lago_box {do insert_empty(myself); } }
 		}
