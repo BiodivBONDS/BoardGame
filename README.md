@@ -20,20 +20,20 @@
   <h3 align="center">BONDS main repository</h3>
 
   <p align="center">
-    Balancing Biodiversity conservation with development in amazone wetlands
+    Balancing Biodiversity conservation with development in amazon wetlands
     <br />
     <a href="http://www.bonds-amazonia.org/"><strong>Explore the project »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/???BONDS???/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/???BONDS???.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/???BONDS???.svg?style=flat-square" /></a>
     ·
-    <a href="https://github.com/???BONDS???/issues"><img alt="Issues" src="https://img.shields.io/github/issues/???BONDS???.svg?style=flat-square)](https://github.com/???BONDS???/issues" /></a>
+    <a href="https://github.com/BiodivBONDS/issues"><img alt="Issues" src="https://img.shields.io/github/issues/???BONDS???.svg?style=flat-square)](https://github.com/???BONDS???/issues" /></a>
     ·
-    <a href="https://github.com/???BONDS???/blob/master/LICENSE"><img alt="GPL3 License" src="https://img.shields.io/github/license/???BONDS???.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/blob/master/LICENSE"><img alt="GPL3 License" src="https://img.shields.io/github/license/???BONDS???.svg?style=flat-square" /></a>
     <br />
-    <a href="https://github.com/???BONDS???/network/members"><img alt="Fork" src="https://img.shields.io/github/forks/???BONDS???.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/network/members"><img alt="Fork" src="https://img.shields.io/github/forks/???BONDS???.svg?style=flat-square" /></a>
     ·
-    <a href="https://github.com/???BONDS???/stargazers"><img alt="Fork" src="https://img.shields.io/github/stars/???BONDS???.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/stargazers"><img alt="Fork" src="https://img.shields.io/github/stars/???BONDS???.svg?style=flat-square" /></a>
   </p>
 </p>
 
