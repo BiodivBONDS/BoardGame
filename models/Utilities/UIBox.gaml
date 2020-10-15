@@ -8,12 +8,14 @@
 
 model UIBox
 
+import "UIActions.gaml"
+
 global {
 	
 	
 }
 
-species VirtualBox virtual:true {
+species VirtualBox virtual:true parent:selectable {
 	
 	// up rigth
 	point _anchor -> first(shape.points);

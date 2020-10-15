@@ -9,6 +9,7 @@
 model Bonds
 
 import "Utilities/UIBox.gaml"
+import "Utilities/UIActions.gaml"
 
 global {
 
@@ -191,7 +192,7 @@ species parana parent:water_body {
 	
 }
 
-species lugar_de_pesca {
+species lugar_de_pesca parent:selectable {
 	list<lugar_de_pesca> conectidade;
 	list<water_body> lugares;
 	int estoque;	
@@ -201,13 +202,14 @@ species lugar_de_pesca {
 // SOCIEDADE //
 ///////////////
 
-species pescador {
+species pescador parent:selectable {
 	
 	comunidade comu;
 	lugar_de_pesca lp;
 	
 	aspect default {
 		draw circle(1) color:#black;
+		if selected { draw contour_shape ? circle(1).contour : circle(1) at:location color:contour_color; }
 	}
 	
 } 
@@ -227,6 +229,28 @@ experiment xp_test {
 			species GridBox;
 			species RegularBox;
 			species pescador;
+		}
+	}
+}
+
+experiment xp_ui {
+	output {
+		layout vertical([0::7285,1::2715]) tabs:true consoles:false navigator:false ;
+		display boxes {
+			species GridBox;
+			species RegularBox;
+			species pescador;
+			
+			event mouse_down action: select_agent;
+			event mouse_move action: move_select;
+			graphics "selection zone" transparency:0.4 {
+				draw circle(select_threshold) at: select_loc empty: true border: true color: #black;
+			}
+		}
+		monitor selected_agent value:sample(selected_agent);
+		display actions type: opengl draw_env:false {
+			species button;
+			event mouse_down action:activate_act; 
 		}
 	}
 }
