@@ -25,15 +25,15 @@
     <a href="http://www.bonds-amazonia.org/"><strong>Explore the project »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/BiodivBONDS/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/???BONDS???.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/BoardGame/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/BiodivBONDS/BoardGame.svg?style=flat-square" /></a>
     ·
-    <a href="https://github.com/BiodivBONDS/issues"><img alt="Issues" src="https://img.shields.io/github/issues/???BONDS???.svg?style=flat-square)](https://github.com/???BONDS???/issues" /></a>
+    <a href="https://github.com/BiodivBONDS/BoardGame/issues"><img alt="Issues" src="https://img.shields.io/github/issues/BiodivBONDS/BoardGame.svg?style=flat-square)](https://github.com/BiodivBONDS/BoardGame/issues" /></a>
     ·
-    <a href="https://github.com/BiodivBONDS/blob/master/LICENSE"><img alt="GPL3 License" src="https://img.shields.io/github/license/???BONDS???.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/BoardGame/blob/master/LICENSE"><img alt="GPL3 License" src="https://img.shields.io/github/license/BiodivBONDS/BoardGame.svg?style=flat-square" /></a>
     <br />
-    <a href="https://github.com/BiodivBONDS/network/members"><img alt="Fork" src="https://img.shields.io/github/forks/???BONDS???.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/BoardGame/network/members"><img alt="Fork" src="https://img.shields.io/github/forks/BiodivBONDS/BoardGame.svg?style=flat-square" /></a>
     ·
-    <a href="https://github.com/BiodivBONDS/stargazers"><img alt="Fork" src="https://img.shields.io/github/stars/???BONDS???.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/BoardGame/stargazers"><img alt="Fork" src="https://img.shields.io/github/stars/BiodivBONDS/BoardGame.svg?style=flat-square" /></a>
   </p>
 </p>
 
