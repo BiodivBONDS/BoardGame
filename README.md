@@ -31,9 +31,9 @@
     ·
     <a href="https://github.com/BiodivBONDS/BoardGame/blob/master/LICENSE"><img alt="GPL3 License" src="https://img.shields.io/github/license/BiodivBONDS/BoardGame.svg?style=flat-square" /></a>
     <br />
-    <a href="https://github.com/BiodivBONDS/BoardGame/network/members"><img alt="Fork" src="https://img.shields.io/github/forks/BiodivBONDS/BoardGame.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/BoardGame/forks"><img alt="Fork" src="https://img.shields.io/github/forks/BiodivBONDS/BoardGame.svg?style=social&label=Fork&maxAge=2592000" /></a>
     ·
-    <a href="https://github.com/BiodivBONDS/BoardGame/stargazers"><img alt="Fork" src="https://img.shields.io/github/stars/BiodivBONDS/BoardGame.svg?style=flat-square" /></a>
+    <a href="https://github.com/BiodivBONDS/BoardGame/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/BiodivBONDS/BoardGame.svg?style=social&label=Star&maxAge=2592000" /></a>
   </p>
 </p>
 
