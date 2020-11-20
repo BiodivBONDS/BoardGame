@@ -15,13 +15,23 @@ global {
 
 	int nb_comunidades <- 3;
 	int nb_pescadores <- 12;
-	int nb_lagos <- 4;
+	
+	list<pair<int,int>> init_lagos <- [(20::100),(10::40),(20::100),(15::60)];
+	list<pair<string,string>> init_paranas <- [
+		(string(rio)::"0"),("0"::"1"),("1"::"2"),(string(rio)::"2"),("2"::"3")
+	];
+	
+	string regular <- "Regular";
+	string regular_baixao <- "Regular baixao";
+	string rio_baixao <- "Rio baixao";
+	map<string,float> lugar_weights <- [regular::0.5,regular_baixao::1.0,rio_baixao::2.0];
 	
 	init {
 		
 		do create_comunidades;
 		
-		create lago number:nb_lagos;
+		create lago number:length(init_lagos);
+		create parana number:length(init_paranas);
 		create rio;
 	
 		do tabuleiro;
@@ -39,99 +49,46 @@ global {
 	}
 	
 	action tabuleiro {
-		ask lago(0) { 
-			extencao <- 20;
-			estoque <- 100;
-			create parana { 
-				origin <- first(rio);
-				destination <- myself;
-				create lugar_de_pesca { 
-					lugares <<+ [myself,lago(0)];
-					estoque <- 40;
-				}
-				lugares <+ last(lugar_de_pesca);
-			}
-			paranas <+ last(parana);
-			create parana {
-				origin <- myself;
-				destination <- lago(1);
-				create lugar_de_pesca { 
-					lugares <<+ [myself,lago(0)];
-					estoque <- 10;
-				}
-				lugares <+ last(lugar_de_pesca);
-				create lugar_de_pesca { 
-					lugares <<+ [myself,lago(1)];
-					estoque <- 10;
-				}
-				lugares <+ last(lugar_de_pesca);
-			}	
-			paranas <+ last(parana);
-			lago(1).paranas <+ last(parana);
+		
+		ask parana {
+			string ori <- init_paranas[int(self)].key;
+			string dest <-  init_paranas[int(self)].value;
+			
+			// Set channel's origin
+			if ori=string(rio) { origin <- first(rio); }
+			else { origin <- lago(int(ori)); lago(int(ori)).paranas <+ self; }
+			
+			// Set channel's destination
+			if dest=string(rio) { destination <- first(rio); }
+			else { destination <- lago(int(dest)); lago(int(dest)).paranas <+ self; }
 		}
-		ask lago(1) {
-			extencao <- 10;
-			estoque <- 40;
-			create parana {
-				origin <- myself;
-				destination <- lago(2);
-				create lugar_de_pesca { 
-					lugares <<+ [myself,lago(1)];
-					estoque <- 10;
-				}
-				lugares <+ last(lugar_de_pesca);
-				create lugar_de_pesca { 
-					lugares <<+ [myself,lago(2)];
-					estoque <- 10;
-				}
-				lugares <+ last(lugar_de_pesca);
-			}
-			paranas <+ last(parana);
-			lago(2).paranas <+ last(parana);
-		}
-		ask lago(2) {
-			extencao <- 20;
-			estoque <- 100;
-			create parana {
-				origin <- first(rio);
-				destination <- myself;
-				create lugar_de_pesca { 
-					lugares <<+ [myself,lago(2)];
-					estoque <- 20;
-				}
-				lugares <+ last(lugar_de_pesca);
-			}
-			paranas <+ last(parana);
-			create parana number:2 returns:prns {
-				origin <- myself;
-				destination <- lago(3);
-				create lugar_de_pesca { 
-					lugares <<+ [myself,lago(2)];
-					estoque <- 10;
-				}
-				lugares <+ last(lugar_de_pesca);
-				create lugar_de_pesca { 
-					lugares <<+ [myself,lago(3)];
-					estoque <- 15;
-				}
-				lugares <+ last(lugar_de_pesca);
-			}	
-			paranas <<+ prns;
-			lago(3).paranas <<+ prns;
-		}
-		ask lago(3) {
-			extencao <- 15;
-			estoque <- 60;
-		}
+		
 		ask lago {
+			
+			// Compute lac size and fish stock
+			extencao <- init_lagos[int(self)].key;
+			estoque <- float(init_lagos[int(self)].value);
 			int nb_lugares <- int(extencao/5);
-			create lugar_de_pesca number:nb_lugares returns: ldp
-				with:[estoque::self.estoque/2/nb_lugares, lugares::[self]];
-			lugares <<+ ldp;
+			
+			// Regular fishing spot
+			create lugar_de_pesca number:nb_lugares with:[localisacao::[self]] { myself.lugares <+ self::lugar_weights[regular]; }
+			
+			map<parana,float> parana_weights <- paranas as_map (each::([each.origin,each.destination] contains first(rio)) ? lugar_weights[rio_baixao] : lugar_weights[regular_baixao]);
+			
+			// Create baixoa
+			ask paranas {
+				create lugar_de_pesca with:[localisacao::[origin,destination]] returns:lps;
+				myself.lugares <+ first(lps)::nb_lugares * parana_weights[self] / sum(parana_weights.values);
+			}
+			
+			
+			ask lugares.keys { estoque <- myself.estoque_de_lugar(self); write sample(self)+" fish stock is :"+with_precision(estoque,2);}
 		}
+		
 		ask comunidade {
-			accesibilidade <+ lago accumulate (each.lugares) closest_to self;
+			accesibilidade <+ lago accumulate (each.lugares.keys) closest_to self;
 		}
+
 	}
 
 	action block_setup {
@@ -148,7 +105,7 @@ global {
 		ask lago {
 			create GridBox with:[name::self.name,shape::lagos_env[int(self)+1],_x::length(lugares),_y::1,color::#blue];
 			GridBox lago_box <- last(GridBox);
-			ask lugares { ask lago_box {do insert_empty(myself); } }
+			ask lugares.keys { ask lago_box {do insert_empty(myself); } }
 		}
 	}
 	
@@ -161,7 +118,7 @@ global {
 species water_body virtual:true {
 	bool dry <- false;
 	int extencao;
-	int estoque;
+	float estoque;
 	
 	float densidade {
 		return estoque/float(extencao);
@@ -172,8 +129,13 @@ species rio parent:water_body {}
 
 species lago parent:water_body {
 		
-	list<lugar_de_pesca> lugares;
+	map<lugar_de_pesca,float> lugares;
 	list<parana> paranas;
+	
+	float estoque_de_lugar(lugar_de_pesca lugar) {
+		if not (lugares contains_key lugar) {return 0.0;}
+		return lugares[lugar] / sum(lugares.values) * estoque;
+	}  
 	
 }
 
@@ -182,7 +144,7 @@ species parana parent:water_body {
 	water_body origin;
 	water_body destination;
 	
-	list<lugar_de_pesca> lugares;
+	bool chanel -> origin != rio(0) or destination != rio(0);
 	
 	action reverse {
 		water_body temp <- origin;
@@ -194,8 +156,8 @@ species parana parent:water_body {
 
 species lugar_de_pesca parent:selectable {
 	list<lugar_de_pesca> conectidade;
-	list<water_body> lugares;
-	int estoque;	
+	list<water_body> localisacao;
+	float estoque;	
 }
 
 ///////////////
@@ -223,15 +185,7 @@ species comunidade {
 // SIMULACAO //
 ///////////////
 
-experiment xp_test {
-	output {
-		display boxes {
-			species GridBox;
-			species RegularBox;
-			species pescador;
-		}
-	}
-}
+experiment xp_test {}
 
 experiment xp_ui {
 	output {
