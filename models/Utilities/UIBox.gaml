@@ -36,6 +36,7 @@ species VirtualBox virtual:true parent:selectable {
 	// INNER METHOD
 	point _outside {return any_location_in(world.shape-shape);}
 	action _insert(agent a, VirtualBox vb) {
+		write sample(a)+" "+sample(vb);
 		grid[a] <- vb;
 		occupancy[vb] <+ a;
 		a.location <- vb.location;
@@ -98,7 +99,7 @@ species GridBox parent:VirtualBox {
 	action __build_boxes {
 		if (_x=0 or _y=0) {error "Cannot build a GridBox without x ("+_x+") or y ("+_y+") dimensions";}
 		list<AtomicBox> atomicBoxes;
-		loop ab over:shape to_rectangles (_y,_x,false) {
+		loop ab over:shape to_rectangles (_y,_x,true) {
 			create AtomicBox with:[shape::ab,b_host::self];
 			atomicBoxes <+ last(AtomicBox);
 		}

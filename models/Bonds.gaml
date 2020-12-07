@@ -18,27 +18,62 @@ global {
 	
 	list<pair<int,int>> init_lagos <- [(20::100),(10::40),(20::100),(15::60)];
 	list<pair<string,string>> init_paranas <- [
-		(string(rio)::"0"),("0"::"1"),("1"::"2"),(string(rio)::"2"),("2"::"3")
+		(string(rio)::"L1"),("L1"::"L2"),("L2"::"L3"),(string(rio)::"L3"),("L3"::"L4")
 	];
 	
+	// BAIXAO MANAGEMENT
 	string regular <- "Regular";
 	string regular_baixao <- "Regular baixao";
 	string rio_baixao <- "Rio baixao";
 	map<string,float> lugar_weights <- [regular::0.5,regular_baixao::1.0,rio_baixao::2.0];
 	
+	// GIS-like GAME BOARD
+	string feature_type_attribute <- "type";
+	string feature_id_attribute <- "id";
+	string rio_type <- "RIO";
+	string lago_type <- "WATER";
+	string parana_type <- "CHANNEL";
+	string comunidade_type <- "COMMUNITY";
+	shape_file board_map <- shape_file("../includes/drawn_environment.shp");
+	geometry shape <- envelope(board_map);
+
 	init {
 		
-		do create_comunidades;
-		
-		create lago number:length(init_lagos);
-		create parana number:length(init_paranas);
-		create rio;
+		if board_map != nil {
+			
+			loop geom over:board_map.contents {
+				list<string> coms <- [];
+				string t <- geom.attributes[feature_type_attribute];
+				string id <- geom.attributes[feature_id_attribute];
+				switch t {
+					match rio_type {create rio with:[shape::geom,id::"R"];}
+					match lago_type {create lago with:[shape::geom,id::id];}
+					match parana_type {create parana with:[shape::geom,id::id];}
+					match comunidade_type {
+						string num <- copy_between(id,0,2);
+						if not (coms contains num) { coms <+ num; create comunidade with:[id::num];}
+						comunidade my_com <- comunidade first_with (each.id = num);
+						create pescador with:[comu::my_com,homeplace::geom,location::any_location_in(geom)];
+						my_com.pescadores <+ last(pescador);
+					}	
+				}
+			}
+			
+		} else {
+			do create_comunidades;
+			create lago number:length(init_lagos) {id <- "L"+int(self);}
+			create parana number:length(init_paranas);
+			create rio with:[id::"R"];
+		}
 	
 		do tabuleiro;
-		do block_setup;
+		if board_map = nil {do block_setup;}
 		
 	}
 	
+	/*
+	 * Create comunidades from scratch
+	 */
 	action create_comunidades {
 		create comunidade number:nb_comunidades;
 		ask comunidade {
@@ -48,39 +83,70 @@ global {
 		}
 	}
 	
+	/*
+	 * Create environment from the originaly drawn object :
+	 * - link lake with proper channels
+	 * - build fishing spot with corresponding fish stocks
+	 */
 	action tabuleiro {
 		
 		ask parana {
-			string ori <- init_paranas[int(self)].key;
-			string dest <-  init_paranas[int(self)].value;
+			string ori;
+			string dest;
+			if id = nil or id = "" {
+				ori <- init_paranas[int(self)].key;
+				dest <-  init_paranas[int(self)].value;
+			} else {
+				ori <- first(id) = "R" ? string(rio) : copy_between(id,0,2);
+				dest <- last(id) = "R" ? string(rio) : copy_between(id,length(id)-2,length(id));
+			}
 			
 			// Set channel's origin
 			if ori=string(rio) { origin <- first(rio); }
-			else { origin <- lago(int(ori)); lago(int(ori)).paranas <+ self; }
+			else { origin <- lago first_with (each.id = ori); lago(origin).paranas <+ self; }
 			
 			// Set channel's destination
 			if dest=string(rio) { destination <- first(rio); }
-			else { destination <- lago(int(dest)); lago(int(dest)).paranas <+ self; }
+			else { destination <- lago first_with (each.id = dest); lago(destination).paranas <+ self; }
 		}
 		
 		ask lago {
 			
 			// Compute lac size and fish stock
-			extencao <- init_lagos[int(self)].key;
+			extencao <- init_lagos[int(last(id))-1].key;
 			estoque <- float(init_lagos[int(self)].value);
 			int nb_lugares <- int(extencao/5);
 			
-			// Regular fishing spot
-			create lugar_de_pesca number:nb_lugares with:[localisacao::[self]] { myself.lugares <+ self::lugar_weights[regular]; }
+			// Area for baixao
+			list<geometry> baixao_de_pesca;
+			loop baixao_parana over:paranas collect (each.shape + 2) {
+				baixao_de_pesca <+ shape inter baixao_parana;
+			} 
 			
-			map<parana,float> parana_weights <- paranas as_map (each::([each.origin,each.destination] contains first(rio)) ? lugar_weights[rio_baixao] : lugar_weights[regular_baixao]);
+			// Area of regular lugares de pesca
+			list<geometry> lugares_de_pesca <- (shape - baixao_de_pesca) to_sub_geometries (list_with(nb_lugares,shape.area/extencao*5));
+			
+			// Regular fishing spot
+			int lid <- 1;
+			create lugar_de_pesca number:nb_lugares with:[localisacao::[self]] {
+				name <- myself.id+lid;
+				lid <- lid+1;
+				shape <- any(lugares_de_pesca);
+				lugares_de_pesca >- shape;
+				myself.lugares <+ self::lugar_weights[regular];
+			}
+			
+			map<parana,float> parana_weights <- paranas as_map (each::([each.origin,each.destination] contains first(rio)) ? 
+				lugar_weights[rio_baixao] : lugar_weights[regular_baixao]
+			);
 			
 			// Create baixoa
 			ask paranas {
-				create lugar_de_pesca with:[localisacao::[origin,destination]] returns:lps;
+				geometry the_area <- baixao_de_pesca closest_to self;
+				create lugar_de_pesca with:[shape::the_area,localisacao::[origin,destination]] returns:lps;
+				first(lps).name <- myself.id+(self.origin=myself?self.destination.id:self.origin.id);
 				myself.lugares <+ first(lps)::nb_lugares * parana_weights[self] / sum(parana_weights.values);
 			}
-			
 			
 			ask lugares.keys { estoque <- myself.estoque_de_lugar(self); write sample(self)+" fish stock is :"+with_precision(estoque,2);}
 		}
@@ -116,6 +182,8 @@ global {
 //////////
 
 species water_body virtual:true {
+	string id;
+	
 	bool dry <- false;
 	int extencao;
 	float estoque;
@@ -125,10 +193,15 @@ species water_body virtual:true {
 	}
 }
 
-species rio parent:water_body {}
+species rio parent:water_body {
+	aspect default {
+		draw "RIO" at:centroid(shape) font:font(20,#bold) color:#white;
+		draw shape color:#midnightblue;
+	}
+}
 
 species lago parent:water_body {
-		
+	
 	map<lugar_de_pesca,float> lugares;
 	list<parana> paranas;
 	
@@ -137,6 +210,7 @@ species lago parent:water_body {
 		return lugares[lugar] / sum(lugares.values) * estoque;
 	}  
 	
+	aspect default { draw shape color:#dodgerblue;}
 }
 
 species parana parent:water_body {
@@ -152,12 +226,16 @@ species parana parent:water_body {
 		destination <- temp;
 	}
 	
+	aspect default { draw shape color:#deepskyblue;}
+	
 }
 
 species lugar_de_pesca parent:selectable {
 	list<lugar_de_pesca> conectidade;
 	list<water_body> localisacao;
 	float estoque;	
+	
+	aspect default { draw name at:shape.centroid color:#white; draw shape.contour color:#white; }
 }
 
 ///////////////
@@ -166,24 +244,53 @@ species lugar_de_pesca parent:selectable {
 
 species pescador parent:selectable {
 	
+	geometry homeplace;
+	
 	comunidade comu;
 	lugar_de_pesca lp;
 	
 	aspect default {
-		draw circle(1) color:#black;
+		draw homeplace.contour color:comu.color;
+		draw circle(0.4).contour color:#darkgreen;
+		draw circle(0.4) color:comu.color;
 		if selected { draw contour_shape ? circle(1).contour : circle(1) at:location color:contour_color; }
 	}
 	
 } 
 
 species comunidade {
+	
+	string id;
+	rgb color;
+	
 	list<pescador> pescadores;
-	list<lugar_de_pesca> accesibilidade;	
+	list<lugar_de_pesca> accesibilidade;
+	
+	init {
+		if color=nil { color <- rnd_color(255); }
+	}
+	
+	aspect default {
+		draw envelope(pescadores collect (each.homeplace)) color:color border:#black; 
+	}	
 }
 
 ///////////////
 // SIMULACAO //
 ///////////////
+
+experiment xp_board {
+	output {
+		display game_board {
+			species rio;
+			species lago;
+			species parana;
+			species lugar_de_pesca;
+			species comunidade transparency:0.8;
+			species pescador;	
+		}
+	}
+}
 
 experiment xp_test {}
 
@@ -196,12 +303,13 @@ experiment xp_ui {
 			species pescador;
 			
 			event mouse_down action: select_agent;
+			event mouse_menu action: inspect_agent;
 			event mouse_move action: move_select;
 			graphics "selection zone" transparency:0.4 {
 				draw circle(select_threshold) at: select_loc empty: true border: true color: #black;
 			}
 		}
-		monitor selected_agent value:sample(selected_agent);
+		monitor selected_agent value:sample(selected_agent) refresh:true;
 		display actions type: opengl draw_env:false {
 			species button;
 			event mouse_down action:activate_act; 
