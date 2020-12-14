@@ -8,14 +8,22 @@
 
 model Bonds
 
-import "Utilities/UIBox.gaml"
 import "Utilities/UIActions.gaml"
 
 global {
 
+	// PESCADORES
 	int nb_comunidades <- 3;
 	int nb_pescadores <- 12;
+
+	// BOATS
+	int starting_nb_boats <- 1;
+	int init_boat_capacity <- 5;
 	
+	// FISH
+	int max_fish_stock_per_unit <- 50;
+	
+	// LAGOS
 	list<pair<int,int>> init_lagos <- [(20::100),(10::40),(20::100),(15::60)];
 	list<pair<string,string>> init_paranas <- [
 		(string(rio)::"L1"),("L1"::"L2"),("L2"::"L3"),(string(rio)::"L3"),("L3"::"L4")
@@ -36,13 +44,17 @@ global {
 	string comunidade_type <- "COMMUNITY";
 	shape_file board_map <- shape_file("../includes/drawn_environment.shp");
 	geometry shape <- envelope(board_map);
+	
+	// GAME RULES
+	string CHOOSE_FISHING_SPOT <- "fishing spot";
+	string GO_BACK_TO_COMU <- "return from fishing";
 
 	init {
 		
 		if board_map != nil {
 			
+			list<string> coms <- [];
 			loop geom over:board_map.contents {
-				list<string> coms <- [];
 				string t <- geom.attributes[feature_type_attribute];
 				string id <- geom.attributes[feature_id_attribute];
 				switch t {
@@ -128,7 +140,8 @@ global {
 			
 			// Regular fishing spot
 			int lid <- 1;
-			create lugar_de_pesca number:nb_lugares with:[localisacao::[self]] {
+			create lugar_de_pesca number:nb_lugares with:[localisacao::self] {
+				extencao <- int((myself.extencao - length(baixao_de_pesca)) / nb_lugares);
 				name <- myself.id+lid;
 				lid <- lid+1;
 				shape <- any(lugares_de_pesca);
@@ -143,16 +156,17 @@ global {
 			// Create baixoa
 			ask paranas {
 				geometry the_area <- baixao_de_pesca closest_to self;
-				create lugar_de_pesca with:[shape::the_area,localisacao::[origin,destination]] returns:lps;
+				create lugar_de_pesca with:[shape::the_area,localisacao::myself] returns:lps;
 				first(lps).name <- myself.id+(self.origin=myself?self.destination.id:self.origin.id);
 				myself.lugares <+ first(lps)::nb_lugares * parana_weights[self] / sum(parana_weights.values);
 			}
 			
-			ask lugares.keys { estoque <- myself.estoque_de_lugar(self); write sample(self)+" fish stock is :"+with_precision(estoque,2);}
+			ask lugares.keys { estoque <- myself.estoque_de_lugar(self); extencao <- 1; /*write sample(self)+" fish stock is :"+with_precision(estoque,2);*/ }
 		}
 		
 		ask comunidade {
-			accesibilidade <+ lago accumulate (each.lugares.keys) closest_to self;
+			shape <- envelope(pescadores collect (each.homeplace));
+			accesibilidade <- lugar_de_pesca as_map (each::each distance_to self);
 		}
 
 	}
@@ -174,6 +188,34 @@ global {
 			ask lugares.keys { ask lago_box {do insert_empty(myself); } }
 		}
 	}
+
+	//------//
+	// GAME //
+	//------//
+
+	bool general_dyn <- true;
+	
+	string SPOT <- "Choose fishing spot";
+	string COMU <- "Return to community"; 
+	list<string> game_turns <- [SPOT,COMU];
+	string game_turn -> general_dyn ? game_turns[cycle mod length(game_turns)] : nil;
+	
+	/*
+	 * MASTER GAME CYCLE
+	 * -----------------
+	 * No pescador reflexes
+	 */
+	reflex game_schedule when:general_dyn {
+		ask pescador { do allocate_boats; }
+		ask lugar_de_pesca where not(empty(each.fishing_boats)) {
+			float fish_catch <- estoque / 2 / length(fishing_boats); 
+			ask fishing_boats {
+				load <- min(fish_catch, capacity);
+				myself.estoque <- myself.estoque - load;
+			}
+		}
+		ask pescador { ask my_boats {myself.fish_stock <- myself.fish_stock + load; load <- 0.0;}}
+	}
 	
 }
 
@@ -181,7 +223,7 @@ global {
 // AQUA //
 //////////
 
-species water_body virtual:true {
+species water_body virtual:true parent:selectable {
 	string id;
 	
 	bool dry <- false;
@@ -200,6 +242,25 @@ species rio parent:water_body {
 	}
 }
 
+species lugar_de_pesca parent:water_body {
+	list<lugar_de_pesca> conectidade;
+	water_body localisacao;
+	
+	list<boat> fishing_boats;
+	
+	reflex update_fish_stock {
+		if estoque > extencao * max_fish_stock_per_unit {estoque <- float(extencao * max_fish_stock_per_unit);}
+		else if estoque > extencao * max_fish_stock_per_unit * 4/5 
+			or estoque < extencao * max_fish_stock_per_unit * 1/5 { estoque <- estoque + estoque * 5 / 100; }
+		else {estoque <- estoque + estoque * 10 / 100;}  
+	}
+	
+	aspect default { 
+		draw name at:shape.centroid color:#white; draw shape.contour color:#white;
+		if selected { draw (shape + 0.25).contour color:contour_color;}
+	}
+}
+
 species lago parent:water_body {
 	
 	map<lugar_de_pesca,float> lugares;
@@ -209,6 +270,11 @@ species lago parent:water_body {
 		if not (lugares contains_key lugar) {return 0.0;}
 		return lugares[lugar] / sum(lugares.values) * estoque;
 	}  
+	
+	reflex fish_distribution {
+		estoque <- sum(lugares.keys collect each.estoque);
+		ask lugares.keys {estoque <- myself.estoque_de_lugar(self);}
+	}
 	
 	aspect default { draw shape color:#dodgerblue;}
 }
@@ -230,24 +296,39 @@ species parana parent:water_body {
 	
 }
 
-species lugar_de_pesca parent:selectable {
-	list<lugar_de_pesca> conectidade;
-	list<water_body> localisacao;
-	float estoque;	
-	
-	aspect default { draw name at:shape.centroid color:#white; draw shape.contour color:#white; }
-}
-
 ///////////////
 // SOCIEDADE //
 ///////////////
 
+species boat { 
+	int capacity;
+	float load;
+	rgb color;
+	init {capacity <- init_boat_capacity;}
+	aspect default {draw rectangle(1,0.5)+triangle(1) color:color;}
+}
+
 species pescador parent:selectable {
 	
 	geometry homeplace;
-	
 	comunidade comu;
-	lugar_de_pesca lp;
+	
+	// Fishing attributes
+	list<boat> my_boats;
+	float fish_stock;
+	
+	init {
+		create boat number:starting_nb_boats with:[location::any_location_in(homeplace+2),color::comu.color] returns:bs;
+		my_boats <- bs;
+	}
+	
+	action allocate_boats {
+		loop b over:my_boats {
+			lugar_de_pesca ldp <- rnd_choice(comu.accesibilidade);
+			ldp.fishing_boats <+ b;
+			b.location <- any_location_in(ldp);
+		}	
+	}
 	
 	aspect default {
 		draw homeplace.contour color:comu.color;
@@ -264,15 +345,13 @@ species comunidade {
 	rgb color;
 	
 	list<pescador> pescadores;
-	list<lugar_de_pesca> accesibilidade;
+	map<lugar_de_pesca,float> accesibilidade;
 	
 	init {
 		if color=nil { color <- rnd_color(255); }
 	}
 	
-	aspect default {
-		draw envelope(pescadores collect (each.homeplace)) color:color border:#black; 
-	}	
+	aspect default { draw shape color:color border:#black; }	
 }
 
 ///////////////
@@ -282,12 +361,31 @@ species comunidade {
 experiment xp_board {
 	output {
 		display game_board {
+			event mouse_down action: select_agent;
+			event mouse_menu action: inspect_agent;
+			event mouse_move action: move_select;
+			
 			species rio;
 			species lago;
 			species parana;
 			species lugar_de_pesca;
 			species comunidade transparency:0.8;
+			species boat;
 			species pescador;	
+		}
+		display env {
+			chart "fish stocks" type:series {
+				loop l over:lago {
+					data "fs:"+l.id value: l.estoque style: spline;
+				}
+			}
+		}
+		display pesca {
+			chart "fish catch" type:series {
+				loop p over:pescador {
+					data "p"+int(p) value: p.fish_stock style: spline;
+				}
+			}
 		}
 	}
 }

@@ -42,6 +42,8 @@ global {
 	
 	action inspect_agent {
 		selectable selagent <- selectables overlapping (select_loc buffer select_threshold) closest_to select_loc;
+		if selagent!=selected_agent { selected_agent.selected <- false; selected_agent <- selagent; }
+		selagent.selected <- true;
 		inspect(selagent);
 	}
 	
