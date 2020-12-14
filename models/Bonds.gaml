@@ -22,6 +22,10 @@ global {
 	
 	// FISH
 	int max_fish_stock_per_unit <- 50;
+	float normal_recovery <- 0.1;
+	float degradeted_recovery <- 0.05; 
+	float high_threshold_recovery <- 4/5;
+	float low_threshold_recovery <- 1/5;
 	
 	// LAGOS
 	list<pair<int,int>> init_lagos <- [(20::100),(10::40),(20::100),(15::60)];
@@ -250,9 +254,10 @@ species lugar_de_pesca parent:water_body {
 	
 	reflex update_fish_stock {
 		if estoque > extencao * max_fish_stock_per_unit {estoque <- float(extencao * max_fish_stock_per_unit);}
-		else if estoque > extencao * max_fish_stock_per_unit * 4/5 
-			or estoque < extencao * max_fish_stock_per_unit * 1/5 { estoque <- estoque + estoque * 5 / 100; }
-		else {estoque <- estoque + estoque * 10 / 100;}  
+		else if estoque > extencao * max_fish_stock_per_unit * high_threshold_recovery 
+			or estoque < extencao * max_fish_stock_per_unit * low_threshold_recovery { estoque <- estoque + estoque * degradeted_recovery; }
+		else {estoque <- estoque + estoque * normal_recovery;}
+		fishing_boats <- [];  
 	}
 	
 	aspect default { 
