@@ -16,23 +16,23 @@ global {
 	int nb_comunidades <- 3;
 	int nb_pescadores <- 12;
 	int init_money_bank <- 5;
-	float fish_selling_price <- 1.0 parameter:true min:0.1 max:5.0;
+	float fish_selling_price <- 1.0 parameter:true min:0.1 max:5.0 category:eco;
 
 	// BOATS
 	int starting_nb_boats <- 1;
-	int init_boat_capacity <- 5;
-	float move_cost_ratio <- 0.2 parameter:true min:0.1 max:1.0;
+	int init_boat_capacity <- 5 parameter:true min:2 max:20 step:1 category:eco;
+	float move_cost_ratio <- 0.2 parameter:true min:0.1 max:1.0 step:0.1 category:eco;
 	
 	// FISHING
 	string rnd_spot <- "rnd_spot";
 	string dst_spot <- "dst_spot";
 	string eff_spot <- "eff_spot";
-	string global_spot_strategy <- rnd_spot parameter:true among:["rnd_spot","dst_spot","eff_spot"];
+	string global_spot_strategy <- rnd_spot parameter:true among:["rnd_spot","dst_spot","eff_spot"] category:decision;
 	
 	// FISH
 	int max_fish_stock_per_unit <- 50;
-	float normal_recovery <- 0.1;
-	float degradeted_recovery <- 0.05; 
+	float normal_recovery <- 0.1 parameter:true min:0.1 max:1.0 step:0.1 category:fish;
+	float degradeted_recovery <- 0.05 parameter:true min:0.05 max:0.5 step:0.05 category:fish; 
 	float high_threshold_recovery <- 4/5;
 	float low_threshold_recovery <- 1/5;
 	
@@ -410,7 +410,9 @@ species comunidade {
 		if color=nil { color <- rnd_color(255); }
 	}
 	
-	aspect default { draw shape color:color border:#black; }	
+	aspect default { 
+		draw shape color:color border:#black;
+	}	
 }
 
 ///////////////
@@ -437,6 +439,12 @@ experiment xp_board {
 			graphics "hydro graph" {
 				loop v over:hydro_graph.vertices { draw circle(0.5) at:agent(v).location color:#white; }
 				loop e over:hydro_graph.edges {draw geometry(e) color:#black;}
+				loop c over: comunidade {
+					draw line([
+						c.graph_accesibilidade.keys first_with (c.graph_accesibilidade[each]=0),
+						first(c closest_points_with (c.graph_accesibilidade.keys first_with (c.graph_accesibilidade[each]=0)))
+					])+0.25 color:c.color;
+				}
 			}	
 		}
 		display env {
