@@ -15,10 +15,19 @@ global {
 	// PESCADORES
 	int nb_comunidades <- 3;
 	int nb_pescadores <- 12;
+	int init_money_bank <- 5;
+	float fish_selling_price <- 1.0 parameter:true min:0.1 max:5.0;
 
 	// BOATS
 	int starting_nb_boats <- 1;
 	int init_boat_capacity <- 5;
+	float move_cost_ratio <- 0.2 parameter:true min:0.1 max:1.0;
+	
+	// FISHING
+	string rnd_spot <- "rnd_spot";
+	string dst_spot <- "dst_spot";
+	string eff_spot <- "eff_spot";
+	string global_spot_strategy <- rnd_spot parameter:true among:["rnd_spot","dst_spot","eff_spot"];
 	
 	// FISH
 	int max_fish_stock_per_unit <- 50;
@@ -165,12 +174,27 @@ global {
 				myself.lugares <+ first(lps)::nb_lugares * parana_weights[self] / sum(parana_weights.values);
 			}
 			
-			ask lugares.keys { estoque <- myself.estoque_de_lugar(self); extencao <- 1; /*write sample(self)+" fish stock is :"+with_precision(estoque,2);*/ }
+			ask lugares.keys { estoque <- myself.estoque_de_lugar(self); extencao <- 1; }
+		}
+
+		// BUILDING HYDRO NETWORK
+		ask lugar_de_pesca { hydro_graph <- hydro_graph add_node self; }
+		ask lugar_de_pesca { 
+			loop c over:lugar_de_pesca where (each.shape overlaps self.shape) { hydro_graph <- hydro_graph add_edge (self::c);}
+		}
+		ask parana { 
+			list<lugar_de_pesca> baixaos <- lugar_de_pesca where (each.shape overlaps self.shape);
+			if length(baixaos)=1 {hydro_graph <- hydro_graph add_edge (first(rio)::first(baixaos));}
+			else if length(baixaos)=2 {hydro_graph <- hydro_graph add_edge (first(baixaos)::last(baixaos));}
+			else {error "There should be no more than 2 extremity to a parana ("+self+" connected to "+length(baixaos)+" lugares)";}
 		}
 		
+		// BUILDING COMUNITY SHAPE AND ACCESSIBILITY
 		ask comunidade {
 			shape <- envelope(pescadores collect (each.homeplace));
-			accesibilidade <- lugar_de_pesca as_map (each::each distance_to self);
+			accesibilidade <- lugar_de_pesca as_map (each::10 / each distance_to self);
+			lugar_de_pesca zero_cost_lugar <- lugar_de_pesca closest_to shape;
+			loop l over:lugar_de_pesca { graph_accesibilidade[l] <- length(path(hydro_graph path_between (zero_cost_lugar,l)).edges); }
 		}
 
 	}
@@ -198,11 +222,14 @@ global {
 	//------//
 
 	bool general_dyn <- true;
-	
+	// ----------------------
 	string SPOT <- "Choose fishing spot";
 	string COMU <- "Return to community"; 
 	list<string> game_turns <- [SPOT,COMU];
 	string game_turn -> general_dyn ? game_turns[cycle mod length(game_turns)] : nil;
+	// ----------------------
+	
+	graph hydro_graph <- graph([]) add_node first(rio);
 	
 	/*
 	 * MASTER GAME CYCLE
@@ -218,8 +245,15 @@ global {
 				myself.estoque <- myself.estoque - load;
 			}
 		}
-		ask pescador { ask my_boats {myself.fish_stock <- myself.fish_stock + load; load <- 0.0;}}
+		ask pescador { do sell_fish; }
 	}
+	
+	/*
+	 * The action to sell the fish and get back money 
+	 * TODO : is there any rate for fish ? might be interesting considering fish species ?
+	 * TODO : is there any agent (e.g. attraversador) that might do the process ? PNG ? Game master ? Players ?
+	 */ 
+	float sold_fish(float fish_quantity) { return fish_quantity * fish_selling_price; }
 	
 }
 
@@ -247,7 +281,7 @@ species rio parent:water_body {
 }
 
 species lugar_de_pesca parent:water_body {
-	list<lugar_de_pesca> conectidade;
+	
 	water_body localisacao;
 	
 	list<boat> fishing_boats;
@@ -310,7 +344,7 @@ species boat {
 	float load;
 	rgb color;
 	init {capacity <- init_boat_capacity;}
-	aspect default {draw rectangle(1,0.5)+triangle(1) color:color;}
+	aspect default {draw rectangle(2,0.5)+triangle(1) color:color;}
 }
 
 species pescador parent:selectable {
@@ -320,7 +354,10 @@ species pescador parent:selectable {
 	
 	// Fishing attributes
 	list<boat> my_boats;
-	float fish_stock;
+	float fish_catch;
+
+	float money_bank;
+	// TODO : movement constraints (e.g. gazoline, accessibility)
 	
 	init {
 		create boat number:starting_nb_boats with:[location::any_location_in(homeplace+2),color::comu.color] returns:bs;
@@ -328,11 +365,27 @@ species pescador parent:selectable {
 	}
 	
 	action allocate_boats {
+		map<lugar_de_pesca,float> distribution;
+		list<lugar_de_pesca> accessible_lugares <- comu.graph_accesibilidade.keys where (comu.graph_accesibilidade[each] * move_cost_ratio <= money_bank);
+		switch global_spot_strategy {
+			match rnd_spot {distribution <- accessible_lugares as_map (each::1.0);}
+			match dst_spot {distribution <- accessible_lugares as_map (each::comu.accesibilidade[each]);}
+			match eff_spot {distribution <- accessible_lugares as_map (each::each.estoque);}
+		}
 		loop b over:my_boats {
-			lugar_de_pesca ldp <- rnd_choice(comu.accesibilidade);
+			lugar_de_pesca ldp <- rnd_choice(distribution);
 			ldp.fishing_boats <+ b;
 			b.location <- any_location_in(ldp);
+			money_bank <- money_bank - comu.graph_accesibilidade[ldp] * move_cost_ratio;
 		}	
+	}
+	
+	action sell_fish {
+		money_bank <- money_bank + world.sold_fish(fish_catch);
+		ask my_boats {
+			myself.fish_catch <- load; 
+			load <- 0.0;
+		}
 	}
 	
 	aspect default {
@@ -351,6 +404,7 @@ species comunidade {
 	
 	list<pescador> pescadores;
 	map<lugar_de_pesca,float> accesibilidade;
+	map<lugar_de_pesca,int> graph_accesibilidade;
 	
 	init {
 		if color=nil { color <- rnd_color(255); }
@@ -365,6 +419,9 @@ species comunidade {
 
 experiment xp_board {
 	output {
+		
+		layout horizontal([0::6141,vertical([vertical([1::5000,2::5000])::6921,3::3079])::3859]) consoles:false tabs:true editors: false;
+		
 		display game_board {
 			event mouse_down action: select_agent;
 			event mouse_menu action: inspect_agent;
@@ -376,7 +433,11 @@ experiment xp_board {
 			species lugar_de_pesca;
 			species comunidade transparency:0.8;
 			species boat;
-			species pescador;	
+			species pescador;
+			graphics "hydro graph" {
+				loop v over:hydro_graph.vertices { draw circle(0.5) at:agent(v).location color:#white; }
+				loop e over:hydro_graph.edges {draw geometry(e) color:#black;}
+			}	
 		}
 		display env {
 			chart "fish stocks" type:series {
@@ -388,7 +449,14 @@ experiment xp_board {
 		display pesca {
 			chart "fish catch" type:series {
 				loop p over:pescador {
-					data "p"+int(p) value: p.fish_stock style: spline;
+					data "p"+int(p) value: p.fish_catch style: spline;
+				}
+			}
+		}
+		display bank {
+			chart "money bank" type:series {
+				loop p over:pescador {
+					data "p"+int(p) value: p.money_bank style: spline;
 				}
 			}
 		}
