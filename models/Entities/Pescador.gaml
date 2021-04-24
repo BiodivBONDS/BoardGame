@@ -17,7 +17,7 @@ global {
 	
 }
 
-species pescador parent:selectable {
+species pescador {
 	
 	geometry homeplace;
 	comunidade comu;
@@ -41,7 +41,7 @@ species pescador parent:selectable {
 		if move_cost_limitation {accessible_lugares <- accessible_lugares where (comu.graph_accesibilidade[each] * move_cost <= money_bank);}
 		switch global_spot_strategy {
 			match rnd_spot {distribution <- accessible_lugares as_map (each::1.0);}
-			match dst_spot {distribution <- accessible_lugares as_map (each::comu.accesibilidade[each]);}
+			match dst_spot {distribution <- accessible_lugares as_map (each::comu.graph_accesibilidade[each]*1.0);}
 			match eff_spot {distribution <- accessible_lugares as_map (each::each.estoque);}
 		}
 		loop b over:my_boats {
@@ -65,7 +65,6 @@ species pescador parent:selectable {
 		else { draw homeplace.contour color:comu.color; }
 		draw circle(0.4).contour color:#darkgreen;
 		draw circle(0.4) color:comu.color;
-		if selected { draw contour_shape ? circle(1).contour : circle(1) at:location color:contour_color; }
 	}
 	
 } 
@@ -76,7 +75,6 @@ species comunidade {
 	rgb color;
 	
 	list<pescador> pescadores;
-	map<lugar_de_pesca,float> accesibilidade;
 	map<lugar_de_pesca,int> graph_accesibilidade;
 	
 	init {
@@ -86,5 +84,16 @@ species comunidade {
 	aspect default { 
 		draw shape color:color border:#black;
 	}	
+}
+
+species boat { 
+	int capacity;
+	float load;
+	rgb color;
+	init {capacity <- init_boat_capacity;}
+	aspect default {
+		if IMG_SHAPE { draw boat_img size:{4.0,2.0,0.0}; }
+		else { draw rectangle(2,0.5)+triangle(1) color:color; }
+	}
 }
 
