@@ -1,14 +1,13 @@
 /**
-* Name: Bonds
-* Based on the internal empty template. 
-* Author: etsop
-* Tags: 
-*/
+ * Name: Bonds
+ * Based on the internal empty template. 
+ * Author: etsop
+ * Tags: 
+ */
 
 
 model Bonds
 
-import "Utilities/UIActions.gaml"
 import "Utilities/Bonds Log.gaml"
 
 import "Entities/Pescador.gaml"
@@ -34,19 +33,39 @@ global {
 	// GIS-like GAME BOARD
 	string feature_type_attribute <- "type";
 	string feature_id_attribute <- "id";
+	string feature_char_attribute <- "att";
+	
 	string rio_type <- "RIO";
 	string forest_type <- "FOREST";
 	string lago_type <- "WATER";
 	string parana_type <- "CHANNEL";
 	string comunidade_type <- "COMMUNITY";
+	string default_type <- "LAND";
+	map<string,rgb> landuse_types <- [
+		rio_type::#midnightblue,
+		forest_type::#forestgreen,
+		lago_type::#dodgerblue,
+		parana_type::#deepskyblue,
+		comunidade_type::#slategrey,
+		default_type::#sandybrown
+	];
+	
 	shape_file board_map <- shape_file("../includes/drawn_environment.shp");
 	geometry shape <- envelope(board_map);
 	
 	// GAME RULES
 	string CHOOSE_FISHING_SPOT <- "fishing spot";
 	string GO_BACK_TO_COMU <- "return from fishing";
+	
+	// RASTER BASED LANDUSE
+	int w_size <- 150; 
+	int h_size <- 100;
 
 	init {
+		
+		do read_parameter;
+		
+		do print_as("Param "+sample(starting_nb_boats),self,DEFAULT_LEVEL);
 		
 		if board_map != nil {
 			
@@ -56,7 +75,16 @@ global {
 				string id <- geom.attributes[feature_id_attribute];
 				switch t {
 					match rio_type {create rio with:[shape::geom,id::"R"];}
-					match lago_type {create lago with:[shape::geom,id::id]; }
+					match lago_type {
+						string short_id <- copy_between(id,0,2);
+						string season_id <- copy_between(id,2,3);
+						if lago none_matches (each.id = short_id) { create lago with:[id::short_id]; }
+						lago cl <- lago first_with (each.id = short_id);
+						switch season_id { 
+							match "H" {cl.season_shapes[HIGH_WATER_SEASON] <+ geom;} 
+							match_one ["M","L"] {cl.season_shapes[LOW_WATER_SEASON] <+ geom;}
+						}
+					}
 					match parana_type {create parana with:[shape::geom,id::id];}
 					match forest_type {create forest with:[shape::geom];}
 					match comunidade_type {
@@ -69,15 +97,17 @@ global {
 				}
 			}
 			
+			ask lago { shape <- union(season_shapes[LOW_WATER_SEASON] collect (each+0.1));}
+			
 		} else {
 			do create_comunidades;
 			create lago number:length(init_lagos) {id <- "L"+int(self);}
 			create parana number:length(init_paranas);
 			create rio with:[id::"R"];
 		}
-	
+		
+		do init_landuse;
 		do tabuleiro;
-		if board_map = nil {do block_setup;}
 		
 	}
 	
@@ -124,17 +154,20 @@ global {
 			
 			// Compute lac size and fish stock
 			extencao <- init_lagos[int(last(id))-1].key;
-			estoque <- float(init_lagos[int(self)].value);
+			estoque <- float(init_lagos[int(last(id))-1].value);
+			fish_stock_cache[cycle] <- fish_stock_cache[cycle]+estoque; 
 			int nb_lugares <- int(extencao/5);
 			
 			// Area for baixao
-			list<geometry> baixao_de_pesca;
+			list<geometry> baixao_de_pesca <- [];
 			loop baixao_parana over:paranas collect (each.shape + 2) {
-				baixao_de_pesca <+ shape inter baixao_parana;
+				geometry g <- shape inter baixao_parana;
+				baixao_de_pesca <+ last(g.geometries sort (each.area));
 			} 
 			
 			// Area of regular lugares de pesca
-			list<geometry> lugares_de_pesca <- (shape - baixao_de_pesca) to_sub_geometries (list_with(nb_lugares,shape.area/extencao*5));
+			list<geometry> lugares_de_pesca <- (shape - baixao_de_pesca) to_sub_geometries list_with(nb_lugares,round(shape.area)/extencao*5);
+			lugares_de_pesca <- lugares_de_pesca collect union(each.geometries where (each.area > 0));
 			
 			// Regular fishing spot
 			int lid <- 1;
@@ -181,28 +214,28 @@ global {
 		// BUILDING COMUNITY SHAPE AND ACCESSIBILITY
 		ask comunidade {
 			shape <- envelope(pescadores collect (each.homeplace));
-			accesibilidade <- lugar_de_pesca as_map (each::10 / each distance_to self);
 			lugar_de_pesca zero_cost_lugar <- lugar_de_pesca closest_to shape;
 			loop l over:lugar_de_pesca { graph_accesibilidade[l] <- length(path(hydro_graph path_between (zero_cost_lugar,l)).edges); }
 		}
 
 	}
-
-	action block_setup {
-		list<geometry> splited_env <- shape to_rectangles (2,1);
-		
-		list<geometry> com_env <- first(splited_env) to_squares (length(comunidade),false);
-		ask comunidade {
-			create RegularBox with:[name::self.name,shape::com_env[int(self)],_size::5#m];
-			RegularBox com_box <- last(RegularBox);
-			ask pescadores { ask com_box {do insert_empty(myself); } }
-		}
-		list<geometry> lagos_env <- last(splited_env) to_squares (length(lago)+1,false);
-		create GridBox with:[name::first(rio).name,shape::first(lagos_env),_x::1,_y::1,color::#darkblue];
-		ask lago {
-			create GridBox with:[name::self.name,shape::lagos_env[int(self)+1],_x::length(lugares),_y::1,color::#blue];
-			GridBox lago_box <- last(GridBox);
-			ask lugares.keys { ask lago_box { do insert_empty(myself); } }
+	
+	action init_landuse {
+		ask landuse { 
+			list<agent> ovlps <- agents_overlapping(self.location) where (each.shape.attributes contains_key feature_type_attribute);
+			if empty(ovlps) {type <- default_type;}
+			else {
+				agent a <- ovlps first_with (landuse_types contains_key each.shape.attributes[feature_type_attribute]);
+				if a != nil { 
+					type <- a.shape.attributes[feature_type_attribute];
+					the_host <- a;
+					if a is land_use_based { land_use_based(a).cover <+ self; }
+				} else { 
+					type <- default_type;
+					the_host <- world;
+				}
+			}
+			color <- landuse_types[type];
 		}
 	}
 
@@ -220,7 +253,7 @@ global {
 	
 	// HYDRO
 	graph hydro_graph <- graph([]);
-	string hydro_regime -> cycle mod 2 = 0 ? LOW_WATER_SEASON : HIGH_WATER_SEASON;
+	string hydro_regime -> cycle=0? LOW_WATER_SEASON : (cycle mod 2 = 0 ? LOW_WATER_SEASON : HIGH_WATER_SEASON);
 	
 	/*
 	 * MASTER GAME CYCLE
@@ -230,14 +263,8 @@ global {
 	reflex game_schedule when:general_dyn {
 		do print_as("global schedule",self,theme::SCH);
 		ask pescador { do allocate_boats; }
-		ask lugar_de_pesca where not(empty(each.fishing_boats)) {
-			float fish_catch <- estoque / (hydro_regime = LOW_WATER_SEASON ? 3/2 : 3) 
-				/ length(fishing_boats); 
-			ask fishing_boats {
-				load <- min(fish_catch, capacity);
-				myself.estoque <- myself.estoque - load;
-			}
-		}
+		if cycle=0 {fish_stock_cache[0] <- 0.0;}
+		ask lugar_de_pesca where not(empty(each.fishing_boats)) { do fishing_output; }
 		ask pescador { do sell_fish; }
 	}
 	
@@ -254,21 +281,16 @@ global {
 // ENV //
 /////////
 
-species forest { aspect default { draw shape color:#forestgreen;} }
+species land_use_based virtual:true { list<landuse> cover; }
 
-///////////////
-// SOCIEDADE //
-///////////////
+species forest parent:land_use_based { aspect default { draw shape color:landuse_types[forest_type];} }
 
-species boat { 
-	int capacity;
-	float load;
-	rgb color;
-	init {capacity <- init_boat_capacity;}
-	aspect default {
-		if IMG_SHAPE { draw boat_img size:{4.0,2.0,0.0}; }
-		else { draw rectangle(2,0.5)+triangle(1) color:color; }
-	}
+species pasto parent:land_use_based { bool natural; }
+
+grid landuse width: w_size height: h_size {
+	agent the_host;
+	string type;
+	aspect default { draw shape color:color; }
 }
 
 ///////////////
@@ -278,15 +300,19 @@ species boat {
 experiment xp_board {
 	output {
 		
-		layout horizontal([0::6141,vertical([vertical([1::5000,2::5000])::6921,3::3079])::3859]) consoles:false tabs:true editors: false;
+		 layout horizontal([0::6141,vertical([vertical([1::5000,2::5000])::6921,3::3079])::3859]) consoles:false tabs:true editors: false;
+		
+		
+		monitor season value:hydro_regime refresh:true;
+		monitor fishes value:round(fish_stock_cache[cycle]) refresh:true color:(cycle<2?#black:(fsc.key>fsc.value?#red:(fsc.key<fsc.value?#green:#black)));
+		monitor reproduction value:round(fish_reproduction[cycle]) refresh:true;
+		monitor fished value:round(fish_fished_cache[cycle]) refresh:true color:#grey;
 		
 		display game_board {
-			event mouse_down action: select_agent;
-			event mouse_menu action: inspect_agent;
-			event mouse_move action: move_select;
-			
+
+			species landuse;
 			species rio;
-			species lago;
+			species lago aspect: hydro;
 			species parana;
 			species lugar_de_pesca;
 			species forest;
@@ -329,26 +355,3 @@ experiment xp_board {
 }
 
 experiment xp_test {}
-
-experiment xp_ui {
-	output {
-		layout vertical([0::7285,1::2715]) tabs:true consoles:false navigator:false ;
-		display boxes {
-			species GridBox;
-			species RegularBox;
-			species pescador;
-			
-			event mouse_down action: select_agent;
-			event mouse_menu action: inspect_agent;
-			event mouse_move action: move_select;
-			graphics "selection zone" transparency:0.4 {
-				draw circle(select_threshold) at: select_loc empty: true border: true color: #black;
-			}
-		}
-		monitor selected_agent value:sample(selected_agent) refresh:true;
-		display actions type: opengl draw_env:false {
-			species button;
-			event mouse_down action:activate_act; 
-		}
-	}
-}
