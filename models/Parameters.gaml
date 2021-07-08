@@ -91,7 +91,7 @@ global {
 	map<string,string> param_translat_pattern <- ["number"::"nb","numbers"::"nb","maximum"::"max","minimum"::"min"];
 	
 	/*
-	 * 
+	 * TODO description
 	 */
 	string format_parameter_name(string param_name) {
 		if world.shape.attributes.keys contains param_name {return param_name;}
@@ -105,6 +105,14 @@ global {
 		if world.shape.attributes.keys contains formated_name {return formated_name;}
 		return nil;
 	}
+	
+	// ----------------------------------------------------------
+	// GAME BOARD
+		
+	bool game_board <- false;
+	shape_file board_map <- shape_file("../includes/drawn_environment.shp");
+	
+	int DEFAULT_SIZE_LUGAR_DE_PESCA <- 5;
 	
 }
 

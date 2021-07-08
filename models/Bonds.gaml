@@ -9,6 +9,7 @@
 model Bonds
 
 import "Utilities/Bonds Log.gaml"
+import "Utilities/Tabulero.gaml"
 
 import "Entities/Pescador.gaml"
 import "Hydro/Varzea.gaml"
@@ -17,26 +18,13 @@ import "Parameters.gaml"
 
 global {
 
-		
-	// LAGOS
-	list<pair<int,int>> init_lagos <- [(20::100),(10::40),(20::100),(15::60)];
-	list<pair<string,string>> init_paranas <- [
-		(string(rio)::"L1"),("L1"::"L2"),("L2"::"L3"),(string(rio)::"L3"),("L3"::"L4")
-	];
+	// INIT WORLD
+	geometry shape <- game_board and board_map!=nil ? envelope(board_map) : rectangle(w_size,h_size);
 	
-	// BAIXAO MANAGEMENT
-	string regular <- "Regular";
-	string regular_baixao <- "Regular baixao";
-	string rio_baixao <- "Rio baixao";
-	map<string,float> lugar_weights <- [regular::0.5,regular_baixao::1.0,rio_baixao::2.0];
-	
-	// GIS-like GAME BOARD
-	string feature_type_attribute <- "type";
-	string feature_id_attribute <- "id";
-	string feature_char_attribute <- "att";
-	
+	// LAND USE
 	string rio_type <- "RIO";
 	string forest_type <- "FOREST";
+	string pasto_type <- "GRASS";
 	string lago_type <- "WATER";
 	string parana_type <- "CHANNEL";
 	string comunidade_type <- "COMMUNITY";
@@ -44,14 +32,13 @@ global {
 	map<string,rgb> landuse_types <- [
 		rio_type::#midnightblue,
 		forest_type::#forestgreen,
+		pasto_type::#mediumaquamarine,
 		lago_type::#dodgerblue,
 		parana_type::#deepskyblue,
 		comunidade_type::#slategrey,
 		default_type::#sandybrown
 	];
-	
-	shape_file board_map <- shape_file("../includes/drawn_environment.shp");
-	geometry shape <- envelope(board_map);
+
 	
 	// GAME RULES
 	string CHOOSE_FISHING_SPOT <- "fishing spot";
@@ -67,47 +54,16 @@ global {
 		
 		do print_as("Param "+sample(starting_nb_boats),self,DEFAULT_LEVEL);
 		
-		if board_map != nil {
-			
-			list<string> coms <- [];
-			loop geom over:board_map.contents {
-				string t <- geom.attributes[feature_type_attribute];
-				string id <- geom.attributes[feature_id_attribute];
-				switch t {
-					match rio_type {create rio with:[shape::geom,id::"R"];}
-					match lago_type {
-						string short_id <- copy_between(id,0,2);
-						string season_id <- copy_between(id,2,3);
-						if lago none_matches (each.id = short_id) { create lago with:[id::short_id]; }
-						lago cl <- lago first_with (each.id = short_id);
-						switch season_id { 
-							match "H" {cl.season_shapes[HIGH_WATER_SEASON] <+ geom;} 
-							match_one ["M","L"] {cl.season_shapes[LOW_WATER_SEASON] <+ geom;}
-						}
-					}
-					match parana_type {create parana with:[shape::geom,id::id];}
-					match forest_type {create forest with:[shape::geom];}
-					match comunidade_type {
-						string num <- copy_between(id,0,2);
-						if not (coms contains num) { coms <+ num; create comunidade with:[id::num];}
-						comunidade my_com <- comunidade first_with (each.id = num);
-						create pescador with:[comu::my_com,homeplace::geom,location::any_location_in(geom)];
-						my_com.pescadores <+ last(pescador);
-					}	
-				}
-			}
-			
-			ask lago { shape <- union(season_shapes[LOW_WATER_SEASON] collect (each+0.1));}
-			
+		if game_board and board_map != nil {
+			do build_tabulero_species(board_map);
 		} else {
+			do build_tabulero_from_scratsh();
+			// TODO localize the communities
 			do create_comunidades;
-			create lago number:length(init_lagos) {id <- "L"+int(self);}
-			create parana number:length(init_paranas);
-			create rio with:[id::"R"];
 		}
 		
 		do init_landuse;
-		do tabuleiro;
+		do init_hydro_graph;
 		
 	}
 	
@@ -124,82 +80,19 @@ global {
 	}
 	
 	/*
-	 * Create environment from the originaly drawn object :
-	 * - link lake with proper channels
-	 * - build fishing spot with corresponding fish stocks
+	 * Create the connectivity graph based on the fishing spots
 	 */
-	action tabuleiro {
+	action init_hydro_graph {
 		
-		ask parana {
-			string ori;
-			string dest;
-			if id = nil or id = "" {
-				ori <- init_paranas[int(self)].key;
-				dest <-  init_paranas[int(self)].value;
-			} else {
-				ori <- first(id) = "R" ? string(rio) : copy_between(id,0,2);
-				dest <- last(id) = "R" ? string(rio) : copy_between(id,length(id)-2,length(id));
-			}
-			
-			// Set channel's origin
-			if ori=string(rio) { origin <- first(rio); }
-			else { origin <- lago first_with (each.id = ori); lago(origin).paranas <+ self; }
-			
-			// Set channel's destination
-			if dest=string(rio) { destination <- first(rio); }
-			else { destination <- lago first_with (each.id = dest); lago(destination).paranas <+ self; }
-		}
-		
-		ask lago {
-			
-			// Compute lac size and fish stock
-			extencao <- init_lagos[int(last(id))-1].key;
-			estoque <- float(init_lagos[int(last(id))-1].value);
-			fish_stock_cache[cycle] <- fish_stock_cache[cycle]+estoque; 
-			int nb_lugares <- int(extencao/5);
-			
-			// Area for baixao
-			list<geometry> baixao_de_pesca <- [];
-			loop baixao_parana over:paranas collect (each.shape + 2) {
-				geometry g <- shape inter baixao_parana;
-				baixao_de_pesca <+ last(g.geometries sort (each.area));
-			} 
-			
-			// Area of regular lugares de pesca
-			list<geometry> lugares_de_pesca <- (shape - baixao_de_pesca) to_sub_geometries list_with(nb_lugares,round(shape.area)/extencao*5);
-			lugares_de_pesca <- lugares_de_pesca collect union(each.geometries where (each.area > 0));
-			
-			// Regular fishing spot
-			int lid <- 1;
-			create lugar_de_pesca number:nb_lugares with:[localisacao::self] {
-				extencao <- int((myself.extencao - length(baixao_de_pesca)) / nb_lugares);
-				name <- myself.id+lid;
-				lid <- lid+1;
-				shape <- any(lugares_de_pesca);
-				lugares_de_pesca >- shape;
-				myself.lugares <+ self::lugar_weights[regular];
-			}
-			
-			map<parana,float> parana_weights <- paranas as_map (each::([each.origin,each.destination] contains first(rio)) ? 
-				lugar_weights[rio_baixao] : lugar_weights[regular_baixao]
-			);
-			
-			// Create baixoa
-			ask paranas {
-				geometry the_area <- baixao_de_pesca closest_to self;
-				create lugar_de_pesca with:[shape::the_area,localisacao::myself] returns:lps;
-				first(lps).name <- myself.id+(self.origin=myself?self.destination.id:self.origin.id);
-				myself.lugares <+ first(lps)::nb_lugares * parana_weights[self] / sum(parana_weights.values);
-			}
-			
-			ask lugares.keys { estoque <- myself.estoque_de_lugar(self); extencao <- 1; }
-		}
-
-		// BUILDING HYDRO NETWORK
+		// add all fishing spots as nodes of the graph
 		ask lugar_de_pesca { hydro_graph <- hydro_graph add_node self; }
+		
+		// connect them to one another when they are spatially connected (overlaps)
 		ask lugar_de_pesca { 
 			loop c over:lugar_de_pesca where (each.shape overlaps self.shape) { hydro_graph <- hydro_graph add_edge (self::c);}
 		}
+		
+		// Build connections based on parana
 		ask parana { 
 			list<lugar_de_pesca> baixaos <- lugar_de_pesca where (each.shape overlaps self.shape);
 			if length(baixaos)=1 {
@@ -211,7 +104,7 @@ global {
 			else {error "There should be no more than 2 extremity to a parana ("+self+" connected to "+length(baixaos)+" lugares)";}
 		}
 		
-		// BUILDING COMUNITY SHAPE AND ACCESSIBILITY
+		// associate communities with the network for accessibility
 		ask comunidade {
 			shape <- envelope(pescadores collect (each.homeplace));
 			lugar_de_pesca zero_cost_lugar <- lugar_de_pesca closest_to shape;
@@ -220,6 +113,9 @@ global {
 
 	}
 	
+	/*
+	 * Draw the environment based on species properties and shapes
+	 */
 	action init_landuse {
 		ask landuse { 
 			list<agent> ovlps <- agents_overlapping(self.location) where (each.shape.attributes contains_key feature_type_attribute);
@@ -285,7 +181,7 @@ species land_use_based virtual:true { list<landuse> cover; }
 
 species forest parent:land_use_based { aspect default { draw shape color:landuse_types[forest_type];} }
 
-species pasto parent:land_use_based { bool natural; }
+species pasto parent:land_use_based { bool natural; aspect default { draw shape color:landuse_types[pasto_type];}  }
 
 grid landuse width: w_size height: h_size {
 	agent the_host;
@@ -316,6 +212,7 @@ experiment xp_board {
 			species parana;
 			species lugar_de_pesca;
 			species forest;
+			species pasto;
 			species comunidade transparency:0.8;
 			species boat;
 			species pescador;
