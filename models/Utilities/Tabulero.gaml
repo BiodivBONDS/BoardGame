@@ -31,6 +31,9 @@ global {
 	string feature_id_attribute <- "id";
 	string feature_char_attribute <- "att";
 	
+	// ---------------------------------------------------------- //
+	// MAIN ACTIONS TO BUILD A TABULERO
+	
 	/*
 	 * Read a shapefile and turn it into a game board considering few rules:
 	 * <ul>
@@ -91,7 +94,30 @@ global {
 			lago[lidx].shape <- circle(lagos[lidx].key, lago_shape.centroid);
 			do build_lakes(lago[lidx],false,lagos[lidx].key,DEFAULT_SIZE_LUGAR_DE_PESCA,float(lagos[lidx].value));
 		}
+		point com_location;
+		float scale <- world.shape.width/10;
+		loop times:nb_comunidades {
+			lago com_lago <- any(lago);
+			com_location <- any_location_in (com_lago.shape buffer (scale) - com_lago.shape);
+			do create_comunidade(
+				rectangle(point(com_location.x-rnd(scale),com_location.y-rnd(scale)),point(com_location.x+rnd(scale),com_location.y+rnd(scale)))
+			);
+		}
 		
+	}
+	
+	// ----------------------
+	// UTIL ACTIONS
+	
+		
+	/*
+	 * Create comunidades from scratch
+	 */
+	action create_comunidade(geometry geom, int pescador_nb <- rnd(1,5)) {
+		create comunidade with:[shape::geom]{
+			create pescador number:pescador_nb with:[comu::self,homeplace::any_location_in(geom)] returns:pescs;
+			pescadores <- pescs;
+		}
 	}
 	
 	/*

@@ -21,6 +21,10 @@ global {
 	// INIT WORLD
 	geometry shape <- game_board and board_map!=nil ? envelope(board_map) : rectangle(w_size,h_size);
 	
+	// RASTER BASED LANDUSE
+	int w_size <- 150; 
+	int h_size <- 100;
+	
 	// LAND USE
 	string rio_type <- "RIO";
 	string forest_type <- "FOREST";
@@ -39,15 +43,6 @@ global {
 		default_type::#sandybrown
 	];
 
-	
-	// GAME RULES
-	string CHOOSE_FISHING_SPOT <- "fishing spot";
-	string GO_BACK_TO_COMU <- "return from fishing";
-	
-	// RASTER BASED LANDUSE
-	int w_size <- 150; 
-	int h_size <- 100;
-
 	init {
 		
 		do read_parameter;
@@ -58,25 +53,11 @@ global {
 			do build_tabulero_species(board_map);
 		} else {
 			do build_tabulero_from_scratsh();
-			// TODO localize the communities
-			do create_comunidades;
 		}
 		
 		do init_landuse;
 		do init_hydro_graph;
 		
-	}
-	
-	/*
-	 * Create comunidades from scratch
-	 */
-	action create_comunidades {
-		create comunidade number:nb_comunidades;
-		ask comunidade {
-			create pescador number:rnd(1,nb_pescadores-length(pescador)) 
-				with:[comu::self] returns:pescs;
-			pescadores <- pescs;
-		}
 	}
 	
 	/*
