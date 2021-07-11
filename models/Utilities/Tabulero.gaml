@@ -51,7 +51,7 @@ global {
 				match lago_type {
 					string short_id <- copy_between(id,0,2);
 					string season_id <- copy_between(id,2,3);
-					if lago none_matches (each.id = short_id) { create lago with:[id::short_id]; }
+					if lago none_matches (each.id = short_id) { create lago with:[shape::geom,id::short_id]; }
 					lago cl <- lago first_with (each.id = short_id);
 					switch season_id { 
 						match "H" {cl.season_shapes[HIGH_WATER_SEASON] <+ geom;} 
@@ -95,7 +95,7 @@ global {
 			do build_lakes(lago[lidx],false,lagos[lidx].key,DEFAULT_SIZE_LUGAR_DE_PESCA,float(lagos[lidx].value));
 		}
 		point com_location;
-		float scale <- world.shape.width/10;
+		int scale <- int(world.shape.width/10);
 		loop times:nb_comunidades {
 			lago com_lago <- any(lago);
 			com_location <- any_location_in (com_lago.shape buffer (scale) - com_lago.shape);
@@ -172,7 +172,7 @@ global {
 		}
 		
 		// Area of regular lugares de pesca
-		list<geometry> lugares_de_pesca <- (shape - baixao_de_pesca) 
+		list<geometry> lugares_de_pesca <- (lake.shape - baixao_de_pesca) 
 			to_sub_geometries list_with(nb_lugares,round(lake.shape.area)/lake.extencao*fish_spot_size);
 		lugares_de_pesca <- lugares_de_pesca collect union(each.geometries where (each.area > 0));
 		

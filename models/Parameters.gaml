@@ -109,7 +109,7 @@ global {
 	// ----------------------------------------------------------
 	// GAME BOARD
 		
-	bool game_board <- false;
+	bool game_board <- true;
 	shape_file board_map <- shape_file("../includes/drawn_environment.shp");
 	
 	int DEFAULT_SIZE_LUGAR_DE_PESCA <- 5;

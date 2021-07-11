@@ -81,8 +81,12 @@ global {
 				hydro_graph <- hydro_graph add_node (rio_link);
 				hydro_graph <- hydro_graph add_edge (rio_link::first(baixaos));
 			}
+			else {hydro_graph <- hydro_graph add_edge (first(baixaos)::last(baixaos));}
+			/*
 			else if length(baixaos)=2 {hydro_graph <- hydro_graph add_edge (first(baixaos)::last(baixaos));}
 			else {error "There should be no more than 2 extremity to a parana ("+self+" connected to "+length(baixaos)+" lugares)";}
+			* 
+			*/
 		}
 		
 		// associate communities with the network for accessibility
