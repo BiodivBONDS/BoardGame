@@ -17,8 +17,9 @@ global {
 	// like 'type' and 'id' but with 'size', 'stocks' and 'connections'
 	list<pair<int,int>> init_lagos <- [(20::100),(10::40),(20::100),(15::60)];
 	list<pair<string,string>> init_paranas <- [
-		(string(rio)::"L1"),("L1"::"L2"),("L2"::"L3"),(string(rio)::"L3"),("L3"::"L4")
+		("R"::"L1"),("L1"::"L2"),("L2"::"L3"),("R"::"L3"),("L3"::"L4")
 	];
+	map<string,int> init_comunidades <- ["L1"::2,"L2"::1,"L3"::2,"L4"::1];
 	
 	// BAIXAO MANAGEMENT
 	string regular <- "Regular";
@@ -72,7 +73,7 @@ global {
 		}
 		
 		ask lago { shape <- union(season_shapes[LOW_WATER_SEASON] collect (each+0.1));}
-		
+		ask comunidade { shape <- envelope(pescadores collect (each.homeplace)); }
 		// Connect the lakes
 		loop p over:parana { do connect_lakes(p);}
 		// Assigne values to lakes
@@ -82,26 +83,98 @@ global {
 	/*
 	 * Built a simple environment based on parameters values
 	 */
-	action build_tabulero_from_scratsh(list<pair<int,int>> lagos <-  init_lagos, list<pair<string,string>> paranas <- init_paranas) {
-		create rio with:[id::"R"];
-		create lago number:length(lagos) {id <- "L"+int(self);}
+	action build_tabulero_from_scratsh(
+		list<pair<int,int>> lagos <-  init_lagos, list<pair<string,string>> paranas <- init_paranas
+	) {
+		create rio with:[id::"R",shape::rectangle({0,0},{shape.width,int(shape.height*0.1)})];
+
+		geometry world_shape <- shape - first(rio).shape;
+		loop i from:1 to:length(lagos) { create lago with:[id::"L"+i]; } 
 		loop pp over:init_paranas {
-			create parana;
-			do connect_lakes(last(parana),[list(lago + rio) first_with (each.id = pp.key),list(lago + rio) first_with (each.id = pp.value)]);
+			water_body orig <- list(lago + rio) first_with (each.id = pp.key);
+			water_body dest <- list(lago + rio) first_with (each.id = pp.value);
+			create parana { ask world { do connect_lakes(myself, [orig,dest]); } }
 		}
-		int lidx <- 0;
-		loop lago_shape over:shape to_triangles length(lagos) {
-			lago[lidx].shape <- circle(lagos[lidx].key, lago_shape.centroid);
-			do build_lakes(lago[lidx],false,lagos[lidx].key,DEFAULT_SIZE_LUGAR_DE_PESCA,float(lagos[lidx].value));
+		
+		list<lago> lago_rio_connect <- lago where (each.paranas one_matches (each.origin is rio or each.destination is rio));
+		list<lago> lago_no_rio <- list(lago) - lago_rio_connect;
+		
+		do print_as("Init lago and paranas: "+sample(lago_rio_connect));
+		
+		// Create the shape and position of lakes : delaunay's triangulation (bad idea)
+		// Design envelops
+		list<geometry> t_lagos;
+		if DELAUNAYS_GEN {
+			float prop <- 1.0/10;
+			float loc_buffer <- 5.0;
+			float rate <- 1.1;
+			t_lagos <- to_triangles(world_shape - square(world_shape.width*prop) at_location any_location_in(world_shape.centroid buffer loc_buffer));
+			loop while:length(t_lagos) < length(lagos) {
+				t_lagos <- to_triangles(world_shape - square(world_shape.width*prop) at_location any_location_in(world_shape.centroid buffer loc_buffer));
+				loc_buffer <- loc_buffer*rate;
+				prop <- prop*rate;
+			}
 		}
+		else {
+			if length(lago) mod 2 = 0 { t_lagos <- world_shape to_squares (int(length(lago)),false); }
+			else if length(lago) = 1 { t_lagos <- [circle(world_shape.width/2,world_shape.centroid)]; }
+			else if length(lago) = 3 { 
+				list<geometry> geoms <- world_shape to_rectangles (1,2);
+				t_lagos <- first(geoms) to_rectangles (2,1) + [last(geoms)]; 
+			} else if length(lago) = 5 {
+				list<geometry> geoms <- world_shape to_rectangles (1,2);
+				t_lagos <- first(geoms) to_rectangles (3,1) + last(geoms) to_rectangles (2,1);
+			} else if length(lago) < 11 {
+				list<geometry> geoms <- world_shape to_rectangles (1,3);
+				t_lagos <- first(geoms) to_rectangles (3,1) + geoms[1] to_rectangles (3,1) + (length(lago)=7 ? last(geoms) :last(geoms) to_rectangles (3,1));
+			} else {
+				list<geometry> geoms <- world_shape to_rectangles (1,4);
+				t_lagos <- geoms accumulate (each to_rectangles (4,1));
+			}
+		}
+		
+		float ext_max <- float(lagos max_of (each.value));
+		// Assign an envelop to lakes connected to rio
+		t_lagos <- t_lagos sort_by (each.centroid distance_to first(rio));
+		loop lago_rio_shape over: t_lagos copy_between (0,length(lago_rio_connect)) {
+			lago cl <- any(lago_rio_connect);
+			int lidx <- int(cl);
+			
+			cl.shape <- circle(lago_rio_shape.height/2.2*lagos[lidx].value/ext_max, lago_rio_shape.centroid);
+			do build_lakes(cl,false,lagos[lidx].key,DEFAULT_SIZE_LUGAR_DE_PESCA,float(lagos[lidx].value));
+			
+			t_lagos >- lago_rio_shape;
+			lago_rio_connect >- cl;
+		}
+		
+		// Sort from largest to lowest area
+		t_lagos <- t_lagos sort_by (-each.area);
+		loop lago_shape over: t_lagos copy_between (0,length(lago_no_rio)) {
+			
+			lago cl <- lago_no_rio with_max_of (lagos[int(each)].value);
+			lago_no_rio >- cl;
+			int lidx <- int(cl);
+			
+			cl.shape <- circle(lago_shape.height/2.2*lagos[lidx].value/ext_max, lago_shape.centroid);
+			do build_lakes(cl,false,lagos[lidx].key,DEFAULT_SIZE_LUGAR_DE_PESCA,float(lagos[lidx].value));
+		}
+		
+		// Give a shape to paranas
+		ask parana { 
+			point op <- first(origin closest_points_with destination);
+			point dp <- first(destination closest_points_with origin);
+			shape <- line(op,dp);
+		}
+		
+		// Create com outside lakes
 		point com_location;
-		int scale <- int(world.shape.width/10);
-		loop times:nb_comunidades {
-			lago com_lago <- any(lago);
-			com_location <- any_location_in (com_lago.shape buffer (scale) - com_lago.shape);
-			do create_comunidade(
-				rectangle(point(com_location.x-rnd(scale),com_location.y-rnd(scale)),point(com_location.x+rnd(scale),com_location.y+rnd(scale)))
-			);
+		int scale <- int(world.shape.height/20);
+		geometry mask <- union(lago collect (each.shape) + rio collect (each.shape));
+		loop cc over:init_comunidades.keys {
+			lago com_lago <- lago first_with (each.id=cc);
+			write sample(com_lago)+" "+sample(cc)+" "+sample(lago collect each.id);
+			point com_loc <- any_location_in ((com_lago.shape buffer (scale)) - (com_lago.shape buffer (scale*0.5)) inter world_shape);
+			do create_comunidade(circle(scale,com_loc) - union(mask,union(comunidade collect each.shape)),init_comunidades[cc]);
 		}
 		
 	}
@@ -113,11 +186,13 @@ global {
 	/*
 	 * Create comunidades from scratch
 	 */
-	action create_comunidade(geometry geom, int pescador_nb <- rnd(1,5)) {
-		create comunidade with:[shape::geom]{
+	comunidade create_comunidade(geometry geom, int pescador_nb <- rnd(1,5)) {
+		do print_as("Creating comunity within "+geom,world,first(level_list));
+		create comunidade with:[shape::geom] returns:coms {
 			create pescador number:pescador_nb with:[comu::self,homeplace::any_location_in(geom)] returns:pescs;
 			pescadores <- pescs;
 		}
+		return first(coms);
 	}
 	
 	/*
@@ -137,7 +212,7 @@ global {
 			if dest=string(rio) { d <- first(rio); }
 			else { d <- lago first_with (each.id = dest); }
 		} else {
-			if length(wbodies) < 1 { error "The should be at least 2 water body to connect";}
+			if length(wbodies) < 1 { do print_as("The should be at least 2 water body to connect",self,last(level_list));}
 			o <- first(wbodies);
 			d <- last(wbodies);
 		}

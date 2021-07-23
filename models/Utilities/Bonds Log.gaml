@@ -12,7 +12,8 @@ global {
 	
 	// Themed log
 	string SCH <- "scheduling";
-	list<string> theme_list <- [SCH];
+	string PARAM <- "parameters";
+	list<string> theme_list <- [SCH,PARAM];
 	
 	// Level log 
 	string LEVEL <- "verbose" among:["trace","debug","verbose","warning","error"];
@@ -39,6 +40,7 @@ global {
 		string t;
 		switch theme {
 			match SCH {t <- "|"+theme+"-"+sample(cycle);}
+			match PARAM {t <- "|"+theme;}
 			default {t <- "";}
 		}
 		return "["+c+t+"]";

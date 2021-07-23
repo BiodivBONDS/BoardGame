@@ -47,8 +47,6 @@ global {
 		
 		do read_parameter;
 		
-		do print_as("Param "+sample(starting_nb_boats),self,DEFAULT_LEVEL);
-		
 		if game_board and board_map != nil {
 			do build_tabulero_species(board_map);
 		} else {
@@ -58,44 +56,6 @@ global {
 		do init_landuse;
 		do init_hydro_graph;
 		
-	}
-	
-	/*
-	 * Create the connectivity graph based on the fishing spots
-	 */
-	action init_hydro_graph {
-		
-		// add all fishing spots as nodes of the graph
-		ask lugar_de_pesca { hydro_graph <- hydro_graph add_node self; }
-		
-		// connect them to one another when they are spatially connected (overlaps)
-		ask lugar_de_pesca { 
-			loop c over:lugar_de_pesca where (each.shape overlaps self.shape) { hydro_graph <- hydro_graph add_edge (self::c);}
-		}
-		
-		// Build connections based on parana
-		ask parana { 
-			list<lugar_de_pesca> baixaos <- lugar_de_pesca where (each.shape overlaps self.shape);
-			if length(baixaos)=1 {
-				point rio_link <- ((shape + 1) inter first(rio).shape).centroid;
-				hydro_graph <- hydro_graph add_node (rio_link);
-				hydro_graph <- hydro_graph add_edge (rio_link::first(baixaos));
-			}
-			else {hydro_graph <- hydro_graph add_edge (first(baixaos)::last(baixaos));}
-			/*
-			else if length(baixaos)=2 {hydro_graph <- hydro_graph add_edge (first(baixaos)::last(baixaos));}
-			else {error "There should be no more than 2 extremity to a parana ("+self+" connected to "+length(baixaos)+" lugares)";}
-			* 
-			*/
-		}
-		
-		// associate communities with the network for accessibility
-		ask comunidade {
-			shape <- envelope(pescadores collect (each.homeplace));
-			lugar_de_pesca zero_cost_lugar <- lugar_de_pesca closest_to shape;
-			loop l over:lugar_de_pesca { graph_accesibilidade[l] <- length(path(hydro_graph path_between (zero_cost_lugar,l)).edges); }
-		}
-
 	}
 	
 	/*
@@ -181,7 +141,7 @@ grid landuse width: w_size height: h_size {
 experiment xp_board {
 	output {
 		
-		 layout horizontal([0::6141,vertical([vertical([1::5000,2::5000])::6921,3::3079])::3859]) consoles:false tabs:true editors: false;
+		 layout horizontal([0::6141,vertical([vertical([1::5000,2::5000])::6921,3::3079])::3859]) consoles:true tabs:true editors: false;
 		
 		
 		monitor season value:hydro_regime refresh:true;

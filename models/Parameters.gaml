@@ -51,6 +51,9 @@ global {
 	string LOW_WATER_SEASON <- "Low water season";
 	map<string, float> hydro_regime_fish_growth <- [HIGH_WATER_SEASON::high_season_fish_recovery,LOW_WATER_SEASON::low_season_fish_recovery];
 	
+	// TABULERO
+	bool DELAUNAYS_GEN <- false;
+	
 	// --------------------------------------------------------------------------------------------------
 	// PARAMETER FILE
 	// --------------------------------------------------------------------------------------------------
@@ -100,7 +103,7 @@ global {
 		loop r over:param_regex_pattern {if formated_name contains r {formated_name <- formated_name replace_regex(r," ");}}
 		formated_name <- formated_name replace_regex(" ","_");
 		
-		do print_as(sample(formated_name),world,DEFAULT_LEVEL);
+		do print_as(formated_name,world,first(level_list),PARAM);
 		
 		if world.shape.attributes.keys contains formated_name {return formated_name;}
 		return nil;
@@ -109,7 +112,7 @@ global {
 	// ----------------------------------------------------------
 	// GAME BOARD
 		
-	bool game_board <- true;
+	bool game_board <- false;
 	shape_file board_map <- shape_file("../includes/drawn_environment.shp");
 	
 	int DEFAULT_SIZE_LUGAR_DE_PESCA <- 5;
