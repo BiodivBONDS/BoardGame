@@ -90,7 +90,7 @@ global {
 species water_body virtual:true parent:land_use_based {
 	string id;
 	
-	bool dry <- false;
+	string water_level;
 	int extencao;
 	float estoque;
 	
@@ -186,6 +186,8 @@ species parana parent:water_body {
 	water_body destination;
 	
 	bool chanel -> origin != rio(0) or destination != rio(0);
+	
+	map<string,string> season_water_level;
 	
 	action reverse {
 		water_body temp <- origin;

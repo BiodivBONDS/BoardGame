@@ -47,8 +47,15 @@ global {
 	float high_season_fish_recovery <- 0.0 parameter:true min:0.0 max:1.0 step:0.1 category:fish;
 		
 	// HYDRO
-	string HIGH_WATER_SEASON <- "High water season";
-	string LOW_WATER_SEASON <- "Low water season";
+	string HIGH_WATER_SEASON <- "High water season" const:true;
+	string DEC_WATER_SEASON <- "Decreasing water season" const:true;
+	string LOW_WATER_SEASON <- "Low water season" const:true;
+	string INC_WATER_SEASON <- "Increasing water season" const:true;
+	
+	string DRY_CHANNEL <- "dry" const:true;
+	string SHALLOW_CHANNEL <- "shallow" const:true;
+	string DEEP_CHANNEL <- "deep" const:true;
+	
 	map<string, float> hydro_regime_fish_growth <- [HIGH_WATER_SEASON::high_season_fish_recovery,LOW_WATER_SEASON::low_season_fish_recovery];
 	
 	// TABULERO
