@@ -1,2 +1,0 @@
-name,type,values,init,min,max,category,remarks
-starting number of boats,int,,1,0,10,fisherman,the initial number of boats for each pescadore

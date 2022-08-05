@@ -1,0 +1,28 @@
+{
+	"jogo": {"caixa": 15, "estacao": "Inverno"},
+	"estacaos": [
+		{"numo": "Inverno","duracao": 1,"migracao": 1},
+		{"numo": "Verão","duracao": 1},
+		{"numo": "Defeso","duracao": 1,"reproducao": 1}
+		],
+	"arreio": [
+		{"name": "Miquera","custo": 5},
+		{"name": "Malhadera","custo": 10},
+		{"name": "Tarrafa","custo": 20}],
+	"peixe": [
+		{"especies": "Escama", "estoque": 100, "valor": 1},
+		{"especies": "Escama Valoroso", "estoque": 20, "valor": 2},
+		{"especies": "Liso", "estoque": 100, "valor": 1},
+		{"especies": "Liso Valoroso", "estoque": 20, "valor": 2}]
+	"players": [
+		{"id":1,"communidade":1,"fam":2},
+		{"id":2,"communidade":2,"fam":5},
+		{"id":3,"communidade":3,"fam":4},
+		{"id":4,"communidade":4,"fam":3}],
+	"lugares": [
+		{"name":"Rio", "migracao":20, "communidade": [1], "imigracao":12},
+		{"name":"Enseada", "migracao":25, "communidade": [1], "imigracao":12},
+		{"name":"Lago", "migracao":30, "communidade": [3,4], "imigracao":18},
+		{"name":"Poco", "migracao":15, "communidade": [2,4], "imigracao":12},
+		{"name":"Igarape", "migracao":10, "communidade": [3], "imigracao":6}]
+}
