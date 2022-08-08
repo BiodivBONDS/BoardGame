@@ -1,0 +1,26 @@
+﻿C;Ano;Rodada;Lugar;Arreio;Escama;Escama val.;Liso;Liso val.;;;
+C1;1;Inverno;Lago;Malhadeira;2;0;1;0;;;2
+C1;1;Verão;Enseada;Tarrafa;1;1;2;0;;;
+C1;1;Verão;Enseada;Miqueira;7P4;2;8P5;1;;;
+C1;1;Defeso;Enseada;Miqueira;3P1;2P2;3P1;3P2;;;
+C1;1;Defeso;Enseada;Tarrafa;4;0;0;0;;;
+C2;1;Inverno;Igarapé;Malhadeira;0;0;0;0;;;
+C2;1;Verão;Igarapé;Malhadeira;4;2;3;0;;;
+C2;1;Verão;Rio;Miqueira;5;1;4;1;;;
+C2;1;Defeso;Rio;Miqueira;0;0;0;0;;;
+C2;1;Defeso;Enseada;Malhadeira;1;0;4;0;;;
+C3;1;Inverno;Rio;Miqueira;0;0;1;0;;;
+C3;1;Inverno;Lago;Malhadeira;1;0;1;0;;;
+C3;1;Verão;Rio;Miqueira;1;0;4;1;;;
+C3;1;Verão;Lago;Malhadeira;7P3;0;2P2;1;;;
+C3;1;Defeso;Lago;Tarrafa;0;0;4;0;;;
+C3;1;Defeso;Rio;Malhadeira;0;1;4;0;;;
+C3;1;Defeso;Rio;Miqueira;1;1;0;1;;;
+C4;1;Inverno;Lago;Miqueira;0;0;0;0;;;
+C4;1;Inverno;Rio;Malhadeira;1;0;0;0;;;
+C4;1;Verão;Poço;Malhadeira;5P2;1P1;4P2;0;;;
+C4;1;Verão;Poço;Malhadeira;3J3;0;3J3;0;;;
+C4;1;Verão;Poço;Miqueira;4;1;6;3;;;
+C4;1;Defeso;Rio;Malhadeira;2;0;0;0;;;
+C4;1;Defeso;Rio;Malhadeira;0;0;2;0;;;
+C4;1;Defeso;Lago;Miqueira;3;2;3;1;;;

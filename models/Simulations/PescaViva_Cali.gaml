@@ -19,8 +19,10 @@ global {
 	
 	PescaViva pv;
 	
-	bool TEST <- true parameter:true;
-	string session_name <- TEST?"Jogo_2022-07-26":"Sessions/Session_"+date(#now).year+"-"+date(#now).month+"-"+date(#now).day;
+	bool TEST <- false parameter:true;
+	string session_name <- TEST?"SESSION_TEST":"Sessions/"+date(#now).year
+		+"-"+(date(#now).month<10?"0"+date(#now).month:date(#now).month)
+		+"-"+(date(#now).day<10?"0"+date(#now).day:date(#now).day);
 	string fp;
 	
 	//=============================
@@ -135,6 +137,7 @@ global {
 		
 		// Create fishing files
 		fp <- "../../includes/"+session_name+".csv";
+		if not(file_exists(fp)) { do create_new_session_file(fp); }
 		
 		do init_fishing_stock;
 	}
@@ -160,8 +163,12 @@ global {
 	action read_new_action_sheet(string filepath) {
 		matrix m <- matrix(csv_file(filepath));
 		loop line from:1 to:m.rows-1 {
+			bool validated_line <- true;
 			string com <- string(m[0,line]) replace (COM,"");
-			if not(empty(com)) and is_number(com) {
+			validated_line <- not(empty(com)) and is_number(com) and is_number(string(m[1,line]))
+				and range(2,4) collect (m[each,line]) none_matches empty(each);
+			if validated_line {
+				
 				int c <- int(com);
 				int a <- int(m[1,line]);
 				string r <- get_season(m[2,line]); 
@@ -171,37 +178,51 @@ global {
 				map<peixe,int> ctch <- []; 
 				list<predador> prddr <- [];
 				map<peixe,int> prcatch <- []; 
-				loop i over:[5,6,7,8] { 
-					string fc <- m[i,line];
-					peixe yp <- __FISH_CATCH_HEADER[i-5];
-					
-					bool jak <- fc contains JAK;
-					bool pir <- fc contains PIR;
-					bool bot <- fc contains BOT;
-					list<string> cpp <- fc split_with (JAK+PIR+BOT, true);
-					
-					ctch[yp] <- int(cpp[0]);
-					if length(cpp)=2 {
-						prddr <+ jak ? predator_reader[JAK] : (pir ? predator_reader[PIR] : predator_reader[BOT]);
-						prcatch[yp] <- int(cpp[1]);
-					} else if length(cpp)>2 {
-						map<int,predador> pidx <- [];
-						if jak { pidx[fc index_of JAK] <- predator_reader[JAK]; }
-						if pir { pidx[fc index_of PIR] <- predator_reader[PIR]; } 
-						if bot { pidx[fc index_of BOT] <- predator_reader[BOT]; }
-						int idp <- 1;
-						loop pi over:pidx.keys sort each { 
-							prddr <+ pidx[pi];
-							if not( prcatch contains_key yp) {prcatch[yp] <- 0;} 
-							prcatch[yp] <- prcatch[yp] + int(cpp[idp]); 
-							idp <- idp+1;
-						}
+				list<string> app <- range(5,4+length(__FISH_CATCH_HEADER)) collect (m[each,line]);
+				if app none_matches empty(each) {
+					loop fc over:app {
+						peixe yp <- __FISH_CATCH_HEADER[app index_of fc];
+						
+						bool jak <- fc contains JAK;
+						bool pir <- fc contains PIR;
+						bool bot <- fc contains BOT;
+						list<string> cpp <- fc split_with (JAK+PIR+BOT, true);
+						
+						ctch[yp] <- int(cpp[0]);
+						if length(cpp)=2 {
+							prddr <+ jak ? predator_reader[JAK] : (pir ? predator_reader[PIR] : predator_reader[BOT]);
+							prcatch[yp] <- int(cpp[1]);
+						} else if length(cpp)>2 {
+							map<int,predador> pidx <- [];
+							if jak { pidx[fc index_of JAK] <- predator_reader[JAK]; }
+							if pir { pidx[fc index_of PIR] <- predator_reader[PIR]; } 
+							if bot { pidx[fc index_of BOT] <- predator_reader[BOT]; }
+							int idp <- 1;
+							loop pi over:pidx.keys sort each { 
+								prddr <+ pidx[pi];
+								if not( prcatch contains_key yp) {prcatch[yp] <- 0;} 
+								prcatch[yp] <- prcatch[yp] + int(cpp[idp]); 
+								idp <- idp+1;
+							}
+						}	
 					}
-					
 				}
 				ask simple_pescador[c-1] { do store_action(a,r,lgr,mat,ctch,prddr,prcatch); }
 			}
 		}
+	}
+	
+	/**
+	 * 
+	 * Create a file associated to a session
+	 * 
+	 */
+	action create_new_session_file(string file_path) {
+		// HEADER
+		save [COM,ANO,EST,LUG,MAT]+list(simple_peixe collect (each.name)) to:file_path type:csv header:false rewrite:true;
+		// 3 line per community per season for the First year
+		loop e over:pv.ESTACAOS { loop c over:simple_pescador { loop times:3 { save [COM+c.comm,1,e] to:file_path type:csv rewrite:false; } } }
+		
 	}
 	
 	// ===================================================
@@ -403,7 +424,7 @@ species simple_pescador parent:pescador {
 					map<peixe,int> predf <- predador(pr).comer_peixe(actual_fish);
 					loop px over:predf.keys { 
 						actual_Pfish[px] <- actual_Pfish contains_key px ? actual_Pfish[px]+predf[px] : predf[px]; 
-						actual_fish[px] <- actual_fish[px] - actual_Pfish[px];
+						actual_fish[px] <- actual_fish[px] - predf[px];
 					}
 					sm <- predador(pr).danificar(sm);
 				}
@@ -682,7 +703,7 @@ experiment PVSim type:gui parent:pvxp {
 					loop sp over:simple_pescador { 
 						list<image_file> afish <- [];
 						loop pp over:sp._pesca[sl].keys { 
-							image_file img <- pp.name contains ESCAMA?(pp.name contains VALOROSO?peiEB:peiE) : (pp.name contains VALOROSO?peiLB:peiL);
+							image_file img <- pp.name contains ESCAMA?(pp.name contains VALIOSO?peiEB:peiE) : (pp.name contains VALIOSO?peiLB:peiL);
 							afish <<+ list_with(sp._pesca[sl][pp],img);
 						}
 						draw "C"+sp.comm at:lg+{0,(int(sp))*50} font:font("Times", 30, #plain) color:blend(commu_colors[int(sp)],#transparent,empty(afish)?0.3:1.0);

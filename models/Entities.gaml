@@ -28,7 +28,7 @@ global {
 	
 	string LISO <- "Liso";
 	string ESCAMA <- "Escama";
-	string VALOROSO <- "Valoroso";
+	string VALIOSO <- "Valioso";
 	
 	string GELEROS <- "Geleros";
 	
@@ -68,8 +68,8 @@ global {
 		pro <- __proper_string_representation(species_valor[0],fishes);
 		
 		string valor <- species_valor[1] replace_regex (" ","");
-		valor <- __proper_string_representation(valor,[VALOROSO,"Brilhante"]);
-		pro <- pro + ([VALOROSO,"Brilhante"] contains valor ? " "+VALOROSO : "");
+		valor <- __proper_string_representation(valor,[VALIOSO,"Brilhante"]);
+		pro <- pro + ([VALIOSO,"Brilhante"] contains valor ? " "+VALIOSO : "");
 		
 		return pro;
 	}

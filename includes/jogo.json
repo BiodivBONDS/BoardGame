@@ -11,9 +11,9 @@
 		{"name": "Tarrafa","custo": 20}],
 	"peixe": [
 		{"especies": "Escama", "estoque": 100, "valor": 1},
-		{"especies": "Escama Valoroso", "estoque": 20, "valor": 2},
+		{"especies": "Escama Valioso", "estoque": 20, "valor": 2},
 		{"especies": "Liso", "estoque": 100, "valor": 1},
-		{"especies": "Liso Valoroso", "estoque": 20, "valor": 2}]
+		{"especies": "Liso Valioso", "estoque": 20, "valor": 2}]
 	"players": [
 		{"id":1,"communidade":1,"fam":2},
 		{"id":2,"communidade":2,"fam":5},
