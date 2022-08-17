@@ -55,9 +55,7 @@ global {
 	map<string,simple_lugar> lugar_reader;
 	
 	// Gears
-	pair<string,string> MIQ <- "I"::MIQUERA; 
-	pair<string,string> MAI <- "A"::MALHADERA; 
-	pair<string,string> TAR <- "T"::TARRAFA;  
+	string Miqueira <- "I"; string Malhadeira <- "A"; string Tarrafa <- "T";  
 	
 	// Predators
 	string JAK <- "J"; string PIR <- "P"; string BOT <- "B"; 
@@ -98,6 +96,9 @@ global {
 	//
 	init {
 		
+		lcodes <- [Rio::RIO,Lago::LAGO,Poco::POCO,Enseada::ENSEADA,Igarape::IGARAPE];
+		acodes <- [Miqueira::MIQUEIRA,Malhadeira::MALHADEIRA,Tarrafa::TARRAFA];
+		
 		// Create the game
 		create simple_gm returns:ams;
 		pv <- leer_o_jogo(first(ams));
@@ -120,8 +121,8 @@ global {
 		
 		// Create TODO precos
 		precos <- [
-			MIQUERA::[simple_peixe[0]::2,simple_peixe[1]::4,simple_peixe[2]::1,simple_peixe[3]::2],
-			MALHADERA::[simple_peixe[0]::4,simple_peixe[1]::8,simple_peixe[2]::2,simple_peixe[3]::4],
+			MIQUEIRA::[simple_peixe[0]::2,simple_peixe[1]::4,simple_peixe[2]::1,simple_peixe[3]::2],
+			MALHADEIRA::[simple_peixe[0]::4,simple_peixe[1]::8,simple_peixe[2]::2,simple_peixe[3]::4],
 			TARRAFA::[simple_peixe[0]::4,simple_peixe[1]::8,simple_peixe[2]::2,simple_peixe[3]::4]
 		];
 		// Create TODO predadores
@@ -162,13 +163,14 @@ global {
 	 */
 	action read_new_action_sheet(string filepath) {
 		matrix m <- matrix(csv_file(filepath));
-		loop line from:1 to:m.rows-1 {
+		loop line from:0 to:m.rows-1 {
 			bool validated_line <- true;
 			string com <- string(m[0,line]) replace (COM,"");
-			validated_line <- not(empty(com)) and is_number(com) and is_number(string(m[1,line]))
-				and range(2,4) collect (m[each,line]) none_matches empty(each);
+			validated_line <- not(empty(com)) and is_number(com) and is_number(string(m[1,line]));
+			loop i from:2 to:4 {validated_line <- validated_line and not(empty(m[i,line])); write "Entry "+i+" is "+m[i,line];}
 			if validated_line {
-				
+				write "Line number "+line+" has been validated with content:";
+				write "\t"+m[0,line]+" fished in "+m[3,line]+" with "+m[4,line];
 				int c <- int(com);
 				int a <- int(m[1,line]);
 				string r <- get_season(m[2,line]); 
@@ -221,7 +223,7 @@ global {
 		// HEADER
 		save [COM,ANO,EST,LUG,MAT]+list(simple_peixe collect (each.name)) to:file_path type:csv header:false rewrite:true;
 		// 3 line per community per season for the First year
-		loop e over:pv.ESTACAOS { loop c over:simple_pescador { loop times:3 { save [COM+c.comm,1,e] to:file_path type:csv rewrite:false; } } }
+		loop e over:pv.ESTACAOS { loop c over:simple_pescador { loop times:3 { save [COM+c.comm,1,e]+list_with(2+length(simple_peixe),"") to:file_path type:csv rewrite:false; } } }
 		
 	}
 	
@@ -403,7 +405,7 @@ species simple_pescador parent:pescador {
 			
 			simple_lugar sl <- simple_lugar(ca.lug);
 			// If miquera lugar is deprecated
-			if sm.modelo=MIQUERA {sl.miq_nb <- sl.miq_nb+1;}
+			if sm.modelo=MIQUEIRA {sl.miq_nb <- sl.miq_nb+1;}
 			
 			// Actual fish fished
 			map<peixe,int> actual_fish;
@@ -641,11 +643,11 @@ species simple_mater parent:mater {
 	int danifica;
 	init {
 		switch modelo { 
- 			match MIQ.value {capacidade <- [miqmu,miqsigma];}
- 			match MAI.value {capacidade <- [maimu,maisigma];}
- 			match TAR.value {capacidade <- [tarmu,tarsigma];}
+ 			match MIQUEIRA {capacidade <- [miqmu,miqsigma];}
+ 			match MALHADEIRA {capacidade <- [maimu,maisigma];}
+ 			match TARRAFA {capacidade <- [tarmu,tarsigma];}
  		}
- 		reparar <- MIQ.value=modelo?2:(MAI.value=modelo?1:0);
+ 		reparar <- MIQUEIRA=modelo?2:(MALHADEIRA=modelo?1:0);
  	}
 }
 

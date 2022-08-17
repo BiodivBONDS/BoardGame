@@ -17,20 +17,25 @@ global {
 	string POCO <- "Poco";
 	string ENSEADA <- "Enseada";
 	string IGARAPE <- "Igarapé";
+	map<string,string> lcodes;
+	
+	string MIQUEIRA <- "Miqueira";
+	string MALHADEIRA <- "Malhadeira";
+	string TARRAFA <- "Tarrafa";
+	map<string,string> acodes;
 	
 	string JAKARE <- "Jakare";
 	string PIRANHA <- "Piranha";
 	string BOTO <- "Boto";
 	
-	string MIQUERA <- "Miquera";
-	string MALHADERA <- "Malhadera";
-	string TARRAFA <- "Tarrafa";
-	
 	string LISO <- "Liso";
 	string ESCAMA <- "Escama";
 	string VALIOSO <- "Valioso";
+	map<string,string> pcodes;
 	
 	string GELEROS <- "Geleros";
+	
+	
 	
 	// ------------------------------------------ //
 	// String contract representation of entities //
@@ -38,14 +43,14 @@ global {
 	
 	// Return proper string form of any fishing spot
 	string get_place(string in, list<string> places <- [RIO,LAGO,POCO,ENSEADA,IGARAPE]) {
-		string pro <- __proper_string_representation(in,places);
+		string pro <- __proper_string_representation(in,places,lcodes);
 		if pro=nil {error in+" cannot be link to any known places: "+places;}
 		return pro;
 	}
 	
 	// Return proper string form of any fishing gear
-	string get_gear(string in, list<string> gears <- [MIQUERA,MALHADERA,TARRAFA]) {
-		string pro <- __proper_string_representation(in,gears);
+	string get_gear(string in, list<string> gears <- [MIQUEIRA,MALHADEIRA,TARRAFA]) {
+		string pro <- __proper_string_representation(in,gears,acodes);
 		if pro=nil {error in+" is not one of the recorded gears in "+gears;}
 		return pro;
 	}

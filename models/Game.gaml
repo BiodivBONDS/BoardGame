@@ -40,13 +40,16 @@ global {
 	/**
 	 * MAIN UTILITY TO OUTPUT PROPER STRING REPRESENTATION OF ENTITIES IN THE GAME
 	 */
-	string __proper_string_representation(string in, list<string> propers, int first_n_chars <- 3){
+	string __proper_string_representation(string in, list<string> propers, 
+		map<string,string> cryp <- map<string,string>([]), int first_n_chars <- 3
+	){
 		if propers contains in {return in;}
+		if not(empty(cryp)) and cryp contains_key in {return cryp[in];}
 		string lcin <- lower_case(in); 
 		loop p over: propers {
 			string lcp <- lower_case(p);
 			if lcin = lcp {return p;}
-			if lcin copy_between (0,first_n_chars-1) = lcp copy_between (0,first_n_chars-1) {return p;}
+			if lcin copy_between (0,first_n_chars) = lcp copy_between (0,first_n_chars) {return p;}
 		}
 		return nil;
 	}
