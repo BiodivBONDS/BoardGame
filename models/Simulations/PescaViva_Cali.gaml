@@ -19,7 +19,7 @@ global {
 	
 	PescaViva pv;
 	
-	bool TEST <- false parameter:true;
+	bool TEST <- true parameter:true;
 	string session_name <- TEST?"SESSION_TEST":"Sessions/"+date(#now).year
 		+"-"+(date(#now).month<10?"0"+date(#now).month:date(#now).month)
 		+"-"+(date(#now).day<10?"0"+date(#now).day:date(#now).day);
@@ -694,8 +694,8 @@ experiment session type:gui parent:pvxp {
 }
 
 experiment PVSim type:gui parent:pvxp {
-	output {
-		display tabuler toolbar: false synchronized:true {
+	output synchronized:true {
+		display tabuler toolbar: false {
 			image pv.estacao=first(pv.ESTACAOS)?inv_img:ver_img;
 			graphics lugpesc {
 				loop lg over:[_loc_enseada,_loc_rio,_loc_igarape,_loc_poco,_loc_lago]{
