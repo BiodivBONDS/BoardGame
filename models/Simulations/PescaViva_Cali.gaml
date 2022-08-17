@@ -164,36 +164,43 @@ global {
 	action read_new_action_sheet(string filepath) {
 		matrix m <- matrix(csv_file(filepath));
 		loop line from:0 to:m.rows-1 {
+			// Validate the line
 			bool validated_line <- true;
 			string com <- string(m[0,line]) replace (COM,"");
+			// ----- Community and year are numbers 
 			validated_line <- not(empty(com)) and is_number(com) and is_number(string(m[1,line]));
-			loop i from:2 to:4 {validated_line <- validated_line and not(empty(m[i,line])); write "Entry "+i+" is "+m[i,line];}
+			// ----- There is a fishing place and a gear
+			loop i from:2 to:4 {validated_line <- validated_line and not(empty(m[i,line]) or m[i,line]=nil); write "Entry "+i+" is "+m[i,line];}
 			if validated_line {
-				write "Line number "+line+" has been validated with content:";
-				write "\t"+m[0,line]+" fished in "+m[3,line]+" with "+m[4,line];
+				// write "Line number "+line+" has been validated with content:";
 				int c <- int(com);
 				int a <- int(m[1,line]);
 				string r <- get_season(m[2,line]); 
 				simple_lugar lgr <- simple_lugar first_with (each.name=get_place(m[3,line]));
 				string mat <- get_gear(m[4,line]); 
+				write "\t"+m[0,line]+" fished in "+lgr.name+" with "+mat;
 				
 				map<peixe,int> ctch <- []; 
 				list<predador> prddr <- [];
 				map<peixe,int> prcatch <- []; 
+				// Read The catch
 				list<string> app <- range(5,4+length(__FISH_CATCH_HEADER)) collect (m[each,line]);
-				if app none_matches empty(each) {
-					loop fc over:app {
-						peixe yp <- __FISH_CATCH_HEADER[app index_of fc];
-						
+				loop fci from:0 to:length(app)-1 {
+					string fc <- app[fci];
+					if fc != nil and int(first(fc)) != 0 {
+						peixe yp <- __FISH_CATCH_HEADER[fci]; // Read peixe
+					
 						bool jak <- fc contains JAK;
 						bool pir <- fc contains PIR;
 						bool bot <- fc contains BOT;
-						list<string> cpp <- fc split_with (JAK+PIR+BOT, true);
+						list<string> cpp <- fc split_with (JAK+PIR+BOT, true); // Read predators if any
 						
-						ctch[yp] <- int(cpp[0]);
+						ctch[yp] <- int(cpp[0]); // Extract non predator catch
+						write "\t--- "+yp.name+" >> "+ctch[yp];
 						if length(cpp)=2 {
 							prddr <+ jak ? predator_reader[JAK] : (pir ? predator_reader[PIR] : predator_reader[BOT]);
 							prcatch[yp] <- int(cpp[1]);
+							write "\t--- "+last(prddr).name+" <<- "+prcatch[yp];
 						} else if length(cpp)>2 {
 							map<int,predador> pidx <- [];
 							if jak { pidx[fc index_of JAK] <- predator_reader[JAK]; }
@@ -206,10 +213,12 @@ global {
 								prcatch[yp] <- prcatch[yp] + int(cpp[idp]); 
 								idp <- idp+1;
 							}
-						}	
-					}
+							loop pc over:prcatch.keys { write "\t--- "+pc.name+" <<- "+prcatch[pc]; }
+						}
+						
+					}	
 				}
-				ask simple_pescador[c-1] { do store_action(a,r,lgr,mat,ctch,prddr,prcatch); }
+				ask simple_pescador[c-1] { do store_action(a,r,lgr,mat,ctch,prddr,prcatch); } // Store action as potential default 
 			}
 		}
 	}
