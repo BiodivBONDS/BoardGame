@@ -171,7 +171,7 @@ species edmanager parent:game_manager {
 		int remaining_effort <- e - sum(peff);
 		loop while:remaining_effort>0 {
 			loop idx from:0 to:nbp-1 { 
-				int ip <- min(remaining_effort,rnd(0,e*1.0/nbp)); 
+				int ip <- int(min(remaining_effort,rnd(0,e*1.0/nbp))); 
 				peff[idx] <- peff[idx]+ip; remaining_effort <- remaining_effort-ip;
 			}
 		}
