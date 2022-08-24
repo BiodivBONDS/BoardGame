@@ -170,7 +170,7 @@ global {
 			// ----- Community and year are numbers 
 			validated_line <- not(empty(com)) and is_number(com) and is_number(string(m[1,line]));
 			// ----- There is a fishing place and a gear
-			loop i from:2 to:4 {validated_line <- validated_line and not(empty(m[i,line]) or m[i,line]=nil); write "Entry "+i+" is "+m[i,line];}
+			loop i from:2 to:4 {validated_line <- validated_line and not(empty(m[i,line]) or m[i,line]=nil); if TEST {write "Entry "+i+" is "+m[i,line];}}
 			if validated_line {
 				// write "Line number "+line+" has been validated with content:";
 				int c <- int(com);
@@ -178,7 +178,7 @@ global {
 				string r <- get_season(m[2,line]); 
 				simple_lugar lgr <- simple_lugar first_with (each.name=get_place(m[3,line]));
 				string mat <- get_gear(m[4,line]); 
-				write "\t"+m[0,line]+" fished in "+lgr.name+" with "+mat;
+				if TEST {write "\t"+m[0,line]+" fished in "+lgr.name+" with "+mat;}
 				
 				map<peixe,int> ctch <- []; 
 				list<predador> prddr <- [];
@@ -196,11 +196,11 @@ global {
 						list<string> cpp <- fc split_with (JAK+PIR+BOT, true); // Read predators if any
 						
 						ctch[yp] <- int(cpp[0]); // Extract non predator catch
-						write "\t--- "+yp.name+" >> "+ctch[yp];
+						if TEST {write "\t--- "+yp.name+" >> "+ctch[yp];}
 						if length(cpp)=2 {
 							prddr <+ jak ? predator_reader[JAK] : (pir ? predator_reader[PIR] : predator_reader[BOT]);
 							prcatch[yp] <- int(cpp[1]);
-							write "\t--- "+last(prddr).name+" <<- "+prcatch[yp];
+							if TEST {write "\t--- "+last(prddr).name+" <<- "+prcatch[yp];}
 						} else if length(cpp)>2 {
 							map<int,predador> pidx <- [];
 							if jak { pidx[fc index_of JAK] <- predator_reader[JAK]; }
@@ -213,7 +213,7 @@ global {
 								prcatch[yp] <- prcatch[yp] + int(cpp[idp]); 
 								idp <- idp+1;
 							}
-							loop pc over:prcatch.keys { write "\t--- "+pc.name+" <<- "+prcatch[pc]; }
+							if TEST {loop pc over:prcatch.keys { write "\t--- "+pc.name+" <<- "+prcatch[pc]; }}
 						}
 						
 					}	

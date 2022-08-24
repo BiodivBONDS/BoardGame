@@ -14,7 +14,7 @@ global {
 	
 	string RIO <- "Rio";
 	string LAGO <- "Lago";
-	string POCO <- "Poco";
+	string POCO <- "Poço";
 	string ENSEADA <- "Enseada";
 	string IGARAPE <- "Igarapé";
 	map<string,string> lcodes;
