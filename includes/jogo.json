@@ -23,6 +23,6 @@
 		{"name":"Rio", "migracao":20, "communidade": [1], "imigracao":12},
 		{"name":"Enseada", "migracao":25, "communidade": [1], "imigracao":12},
 		{"name":"Lago", "migracao":30, "communidade": [3,4], "imigracao":18},
-		{"name":"Poco", "migracao":15, "communidade": [2,4], "imigracao":12},
+		{"name":"Poço", "migracao":15, "communidade": [2,4], "imigracao":12},
 		{"name":"Igarape", "migracao":10, "communidade": [3], "imigracao":6}]
 }
