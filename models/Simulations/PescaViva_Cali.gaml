@@ -12,6 +12,7 @@ import "../Jogo.gaml"
 
 /**
  * TODO : add detrimental effect of miquera on reproductions
+ * TODO : beaucoup
  * TODO : add detrimental impact of fishing effort on next imigration
  */
 global {
