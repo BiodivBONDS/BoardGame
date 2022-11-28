@@ -11,7 +11,6 @@ import "../Game.gaml"
 import "../Jogo.gaml"
 
 /**
- * TODO : add predators
  * TODO : add detrimental effect of miquera on reproductions
  * TODO : add detrimental impact of fishing effort on next imigration
  */
